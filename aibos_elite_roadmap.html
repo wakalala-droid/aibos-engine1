@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-BOS · Engine 1 Mastery Map</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Clash+Display:wght@400;500;600;700&family=Satoshi:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090f;--bg2:#0c1018;--bg3:#111824;--card:#0e1520;
+  --line:#1a2438;--line2:#243048;
+  --c1:#00d4ff;--c2:#7c3aed;--c3:#f59e0b;--c4:#10b981;--c5:#f43f5e;--c6:#8b5cf6;
+  --text:#dde4f0;--muted:#4a5a72;--muted2:#6a7a92;
+  --green:#10b981;--red:#ef4444;--gold:#f59e0b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Satoshi',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+/* NOISE TEXTURE */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
+
+/* ── HEADER ── */
+header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--line);background:rgba(7,9,15,.9);backdrop-filter:blur(20px);}
+.logo{display:flex;align-items:center;gap:14px;}
+.logo-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--c2),var(--c1));display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#fff;letter-spacing:-.5px;}
+.logo-name{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.logo-sub{font-size:10px;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:1px;}
+.hdr-right{display:flex;align-items:center;gap:20px;}
+.xp-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+.xp-row{display:flex;align-items:center;gap:8px;}
+.xp-nums{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+.xp-track{width:160px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--c2),var(--c1));border-radius:3px;transition:width .7s cubic-bezier(.4,0,.2,1);}
+.lvl-chip{padding:5px 14px;border-radius:20px;background:linear-gradient(135deg,var(--c2),var(--c1));font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+
+/* ── STAGE BAR ── */
+.stage-bar{position:relative;z-index:10;display:flex;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;}
+.stage-bar::-webkit-scrollbar{display:none;}
+.sb-pill{flex:1;min-width:120px;padding:10px 12px;cursor:pointer;border-right:1px solid var(--line);transition:background .2s;position:relative;}
+.sb-pill:last-child{border-right:none;}
+.sb-pill:hover{background:var(--bg2);}
+.sb-num{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+.sb-name{font-size:11px;font-weight:700;margin-top:2px;}
+.sb-track{height:2px;background:var(--bg3);border-radius:1px;margin-top:8px;overflow:hidden;}
+.sb-fill{height:100%;border-radius:1px;transition:width .5s;}
+
+/* ── MAIN ── */
+.main{position:relative;z-index:5;padding:28px 32px;max-width:1400px;margin:0 auto;}
+
+/* ── STAGE SECTION ── */
+.stage-sec{margin-bottom:44px;}
+.stage-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+.stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.stage-lbl{font-size:14px;font-weight:700;}
+.stage-meta{font-size:10px;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-left:auto;}
+.stage-progress-text{font-size:10px;font-family:'JetBrains Mono',monospace;}
+
+/* ── SKILL GRID ── */
+.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+
+/* ── NODE ── */
+.node{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:16px 16px 14px;cursor:pointer;position:relative;overflow:hidden;transition:all .18s ease;user-select:none;}
+.node::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--nc) 0%,transparent 60%);opacity:0;transition:opacity .2s;}
+.node:hover:not(.locked){border-color:var(--nc);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.5);}
+.node:hover:not(.locked)::before{opacity:.06;}
+.node.done{border-color:var(--green);background:rgba(16,185,129,.07);}
+.node.locked{opacity:.38;cursor:not-allowed;filter:grayscale(.4);}
+.node.sel{border-color:var(--nc);box-shadow:0 0 0 3px rgba(0,212,255,.12);}
+.node-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.node-ico{font-size:20px;line-height:1;}
+.node-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--muted);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:all .2s;}
+.node.done .node-check{background:var(--green);border-color:var(--green);color:#fff;}
+.node-name{font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.3;}
+.node-blurb{font-size:10px;color:var(--muted2);line-height:1.5;}
+.node-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.node-xp{font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(0,212,255,.1);color:var(--c1);}
+.node.done .node-xp{background:rgba(16,185,129,.15);color:var(--green);}
+.node-time{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+/* ── OVERLAY ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(6px);}
+.overlay.open{opacity:1;pointer-events:all;}
+.lesson-sheet{position:relative;background:var(--bg2);border-top:1px solid var(--line2);border-radius:24px 24px 0 0;width:100%;max-height:92vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);}
+.overlay.open .lesson-sheet{transform:translateY(0);}
+
+/* Sheet handle */
+.sheet-handle{width:40px;height:4px;background:var(--line2);border-radius:2px;margin:12px auto 0;}
+
+/* Sheet header */
+.sheet-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 32px 0;flex-shrink:0;}
+.sh-left{display:flex;align-items:center;gap:14px;}
+.sh-ico{font-size:32px;line-height:1;}
+.sh-title{font-size:22px;font-weight:700;letter-spacing:-.4px;margin-bottom:3px;}
+.sh-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.chip{padding:4px 10px;border-radius:20px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;}
+.chip-stage{background:rgba(255,255,255,.06);color:var(--muted2);}
+.chip-time{background:rgba(245,158,11,.12);color:var(--gold);}
+.chip-xp{background:rgba(0,212,255,.1);color:var(--c1);}
+.close-btn{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--line2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted2);transition:all .15s;flex-shrink:0;}
+.close-btn:hover{background:var(--line2);color:var(--text);}
+
+/* Sheet tabs */
+.sheet-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-top:16px;padding:0 32px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.sheet-tabs::-webkit-scrollbar{display:none;}
+.tab-btn{padding:10px 18px;font-size:12px;font-weight:700;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Satoshi',sans-serif;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--c1);border-bottom-color:var(--c1);}
+
+/* Sheet body */
+.sheet-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:28px 32px 40px;scrollbar-width:thin;scrollbar-color:var(--line2) transparent;}
+.sheet-body::-webkit-scrollbar{width:4px;}
+.sheet-body::-webkit-scrollbar-track{background:transparent;}
+.sheet-body::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+
+/* Tab panes */
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ── LESSON TAB ── */
+.lesson-section{margin-bottom:28px;}
+.ls-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+.ls-body{font-size:14px;line-height:1.8;color:#a8b8cc;}
+.ls-body strong{color:var(--text);font-weight:700;}
+.ls-body em{color:var(--c1);font-style:normal;}
+
+/* Analogy box */
+.analogy-box{background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.25);border-radius:12px;padding:16px 20px;margin:12px 0;}
+.analogy-box .ab-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--c2);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.analogy-box p{font-size:13px;color:#a8b8cc;line-height:1.7;}
+
+/* Warning box */
+.warn-box{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:14px 18px;margin:10px 0;}
+.warn-box .wb-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--red);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.warn-box p{font-size:12px;color:#c8a8a8;line-height:1.6;}
+
+/* Tip box */
+.tip-box{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px 18px;margin:10px 0;}
+.tip-box .tb-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--green);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.tip-box p{font-size:12px;color:#a8c8b8;line-height:1.6;}
+
+/* ── CODE BREAKDOWN TAB ── */
+.code-full{background:#060c18;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px;overflow-x:auto;}
+.code-full pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;white-space:pre;}
+.kw{color:#c084fc;}.fn{color:#38bdf8;}.st{color:#4ade80;}.cm{color:#374151;}.nm{color:#fbbf24;}.op{color:#fb923c;}
+
+.line-breakdown{display:flex;flex-direction:column;gap:12px;}
+.lb-item{display:flex;gap:14px;align-items:flex-start;}
+.lb-code{background:#060c18;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;flex-shrink:0;min-width:200px;max-width:260px;word-break:break-all;}
+.lb-arrow{color:var(--muted);flex-shrink:0;margin-top:8px;}
+.lb-explain{font-size:12px;line-height:1.7;color:#94a3b8;padding-top:4px;}
+.lb-explain strong{color:var(--text);}
+
+/* ── EXERCISE TAB ── */
+.exercise-header{margin-bottom:20px;}
+.ex-task{background:var(--bg3);border:1px solid var(--line2);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+.ex-task-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--c3);font-family:'JetBrains Mono',monospace;margin-bottom:8px;}
+.ex-task p{font-size:13px;line-height:1.7;color:#a8b8cc;}
+.ex-task p strong{color:var(--text);}
+
+.ex-steps{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.ex-step{display:flex;gap:10px;align-items:flex-start;}
+.ex-step-num{width:20px;height:20px;border-radius:50%;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--c1);font-family:'JetBrains Mono',monospace;flex-shrink:0;margin-top:1px;}
+.ex-step p{font-size:12px;color:#94a3b8;line-height:1.6;}
+
+.ex-input-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;}
+.ex-textarea{width:100%;background:#060c18;border:1.5px solid var(--line2);border-radius:10px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);resize:vertical;min-height:90px;outline:none;transition:border-color .2s;}
+.ex-textarea:focus{border-color:var(--c1);}
+
+.grade-btn{padding:12px 28px;border-radius:10px;border:none;cursor:pointer;font-family:'Satoshi',sans-serif;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--c2),var(--c1));color:#fff;transition:all .2s;margin-top:10px;}
+.grade-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,.2);}
+.grade-btn:active{transform:translateY(0);}
+
+.grade-result{margin-top:14px;padding:16px 18px;border-radius:12px;display:none;}
+.grade-result.pass{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);display:block;}
+.grade-result.fail{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);display:block;}
+.grade-result.partial{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);display:block;}
+.gr-title{font-size:12px;font-weight:700;margin-bottom:6px;}
+.grade-result.pass .gr-title{color:var(--green);}
+.grade-result.fail .gr-title{color:var(--red);}
+.grade-result.partial .gr-title{color:var(--gold);}
+.gr-body{font-size:12px;line-height:1.7;color:#a8b8cc;}
+
+.complete-btn{width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:'Satoshi',sans-serif;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--c2),var(--c1));color:#fff;transition:all .2s;margin-top:16px;}
+.complete-btn:hover:not(.done){transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,.25);}
+.complete-btn.done{background:rgba(16,185,129,.15);color:var(--green);border:1.5px solid var(--green);}
+
+/* ── ERRORS TAB ── */
+.error-card{background:var(--bg3);border:1px solid var(--line2);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.ec-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background .15s;}
+.ec-header:hover{background:rgba(255,255,255,.03);}
+.ec-err{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);font-weight:700;}
+.ec-toggle{margin-left:auto;font-size:12px;color:var(--muted);transition:transform .2s;}
+.ec-body{padding:0 16px;max-height:0;overflow:hidden;transition:all .3s;}
+.ec-body.open{max-height:400px;padding:12px 16px 16px;}
+.ec-why{font-size:12px;color:#94a3b8;line-height:1.7;margin-bottom:10px;}
+.ec-fix-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--green);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.ec-fix{background:#060c18;border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;line-height:1.7;}
+
+/* Paste error help */
+.error-helper{background:var(--bg3);border:1px solid var(--line2);border-radius:12px;padding:20px;margin-top:20px;}
+.eh-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-bottom:10px;}
+.eh-input{width:100%;background:#060c18;border:1.5px solid var(--line2);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);resize:vertical;min-height:80px;outline:none;transition:border-color .2s;}
+.eh-input:focus{border-color:var(--c5);}
+.eh-btn{padding:9px 20px;border-radius:8px;border:1px solid var(--c5);cursor:pointer;background:rgba(244,63,94,.1);color:var(--c5);font-family:'Satoshi',sans-serif;font-size:12px;font-weight:700;margin-top:8px;transition:all .15s;}
+.eh-btn:hover{background:rgba(244,63,94,.2);}
+.eh-result{margin-top:12px;font-size:12px;color:#a8b8cc;line-height:1.7;display:none;}
+.eh-result.show{display:block;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;background:var(--bg3);border:1px solid var(--green);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;color:var(--green);transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);font-family:'JetBrains Mono',monospace;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;padding:20px;}
+.modal-bg.show{opacity:1;pointer-events:all;}
+.modal-box{background:var(--bg2);border:1px solid var(--c1);border-radius:20px;padding:40px;max-width:400px;width:100%;text-align:center;box-shadow:0 0 80px rgba(0,212,255,.15);}
+.modal-emoji{font-size:52px;margin-bottom:14px;}
+.modal-title{font-size:22px;font-weight:700;margin-bottom:8px;}
+.modal-sub{font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:24px;}
+.modal-close{padding:11px 32px;background:linear-gradient(135deg,var(--c2),var(--c1));border:none;border-radius:10px;color:#fff;font-family:'Satoshi',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .main{padding:20px 16px;}
+  .sheet-hdr,.sheet-tabs,.sheet-body{padding-left:18px;padding-right:18px;}
+  .skill-grid{grid-template-columns:1fr 1fr;}
+  header{padding:14px 18px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">AI</div>
+    <div>
+      <div class="logo-name">AI-BOS Mastery Map</div>
+      <div class="logo-sub">Engine 1 · Financial Intelligence · Complete Beginner Path</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="xp-wrap">
+      <div class="xp-row">
+        <div class="xp-nums"><span id="xpNow">0</span>/<span id="xpMax">0</span> XP</div>
+        <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="lvl-chip" id="lvlChip">LVL 0</div>
+  </div>
+</header>
+
+<div class="stage-bar" id="stageBar"></div>
+<div class="main" id="treeMain"></div>
+
+<!-- LESSON OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="lesson-sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr">
+      <div class="sh-left">
+        <div class="sh-ico" id="shIco"></div>
+        <div>
+          <div class="sh-title" id="shTitle"></div>
+          <div class="sh-meta" id="shMeta"></div>
+        </div>
+      </div>
+      <button class="close-btn" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-tabs" id="sheetTabs">
+      <button class="tab-btn active" onclick="switchTab('learn',this)">📖 Understand</button>
+      <button class="tab-btn" onclick="switchTab('code',this)">⚙️ Code Breakdown</button>
+      <button class="tab-btn" onclick="switchTab('exercise',this)">🎯 Exercise</button>
+      <button class="tab-btn" onclick="switchTab('errors',this)">🚨 Errors & Help</button>
+    </div>
+    <div class="sheet-body" id="sheetBody">
+      <div class="tab-pane active" id="tab-learn"></div>
+      <div class="tab-pane" id="tab-code"></div>
+      <div class="tab-pane" id="tab-exercise"></div>
+      <div class="tab-pane" id="tab-errors"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modal"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// SKILL DATA — ELITE LEVEL
+// ═══════════════════════════════════════════════════════════════════════════
+const STAGES = [
+{
+  id:'s1',name:'Python Core',color:'#00d4ff',time:'Days 1–3',
+  skills:[
+  {
+    id:'setup',name:'Install Python & VS Code',icon:'⚙️',xp:50,time:'20 min',deps:[],
+    blurb:'Get your coding environment running.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">What you are doing and why</div>
+  <div class="ls-body">
+    Python is the language. VS Code is the text editor where you write that language. Think of it this way: <strong>Python is English, VS Code is Microsoft Word.</strong> You need both. Without Python installed, your computer literally does not understand the code you write. Without VS Code, writing code is painful.
+    <br><br>
+    You are not installing a game or an app. You are installing a <strong>translator</strong> — one that takes your instructions and tells the computer exactly what to do.
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">Exact steps</div>
+  <div class="ls-body">
+    <strong>Step 1.</strong> Go to <em>python.org/downloads</em> → Click the big button → Run the installer.<br>
+    ⚠ On the first screen, tick <strong>"Add Python to PATH"</strong> before clicking Install. If you miss this, Python installs but your computer cannot find it.<br><br>
+    <strong>Step 2.</strong> Go to <em>code.visualstudio.com</em> → Download → Install.<br><br>
+    <strong>Step 3.</strong> Open VS Code. Press <em>Ctrl+Shift+X</em> → Search "Python" → Install the Microsoft Python extension. This makes VS Code understand Python files.<br><br>
+    <strong>Step 4.</strong> Create a new file: <em>File → New File → Save As → aibos.py</em>. The .py extension tells VS Code it is a Python file.
+  </div>
+</div>
+<div class="analogy-box">
+  <div class="ab-label">💡 ANALOGY</div>
+  <p>The PATH setting is like adding Python to your phone's contacts. Without it, you have the number (Python is installed) but your phone (the computer's terminal) cannot find it by name. With it, you just type "python" and it knows exactly what you mean.</p>
+</div>
+<div class="tip-box">
+  <div class="tb-label">✓ HOW TO KNOW IT WORKED</div>
+  <p>Open VS Code terminal (View → Terminal). Type <strong>python --version</strong> and press Enter. You should see something like "Python 3.12.0". If you see an error, the PATH step was missed — reinstall and tick that box.</p>
+</div>`,
+    codeBreakdown:`
+<div class="ls-label" style="margin-bottom:16px;">Your first program — line by line</div>
+<div class="code-full"><pre><span class="cm"># This is a comment. Python ignores everything after #</span>
+<span class="cm"># Comments are notes you write for yourself</span>
+
+<span class="fn">print</span>(<span class="st">"AI-BOS online"</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="fn">print</span>()</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain"><strong>print()</strong> is a built-in Python function. A function is a command that does something. <strong>print()</strong> specifically displays whatever you put inside its brackets onto the screen. You will use this constantly to see what your code is doing.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="st">"AI-BOS online"</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">The <strong>quotes</strong> are mandatory. They tell Python: "this is text, not a command." Without quotes, Python thinks you are referring to a variable named AI-BOS, which does not exist, and crashes. <strong>Rule: any time you write actual words or text in Python, wrap them in quotes.</strong></div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Run your first program and confirm it works.',
+      steps:[
+        'In VS Code, create a file called <strong>aibos.py</strong>',
+        'Type exactly: <strong>print("AI-BOS online")</strong>',
+        'Press <strong>Ctrl+F5</strong> to run it',
+        'In the terminal at the bottom, you should see: <strong>AI-BOS online</strong>',
+        'Paste exactly what appeared in your terminal below'
+      ],
+      inputLabel:'Paste your terminal output here:',
+      placeholder:'AI-BOS online',
+      grader:(v)=>{
+        const clean = v.trim().toLowerCase();
+        if(clean.includes('ai-bos online')) return {pass:true, msg:'Perfect. Your Python environment is working. You just ran your first program. The AI-BOS Financial Engine starts from exactly this point.'};
+        if(clean.includes('syntaxerror')) return {fail:true, msg:'SyntaxError means there is a typo. Check: (1) Did you use straight quotes " not curly quotes? (2) Are both brackets present print( and )?'};
+        if(clean.includes('nameerror')) return {fail:true, msg:'NameError means Python tried to find a variable called something that does not exist. You probably missed the quotes around the text.'};
+        if(clean.length > 0) return {partial:true, msg:'That does not look quite right. Expected to see "AI-BOS online". Copy exactly what appears in the terminal — including any error messages.'};
+        return {fail:true, msg:'Paste what appeared in the terminal below the code. If nothing appeared, try pressing Ctrl+F5 again.'};
+      }
+    },
+    errors:[
+      {err:"'python' is not recognized as a command",why:"Python was installed but the PATH was not set. The computer knows Python exists but cannot find it when called by name.",fix:"Uninstall Python. Reinstall it from python.org. On the very first screen of the installer, tick 'Add Python to PATH' before clicking Install."},
+      {err:"SyntaxError: invalid syntax",why:"Python found something it cannot understand. The most common cause: missing or wrong quotes, missing brackets, or a typo in a keyword.",fix:'Check your code character by character. Make sure you have: print("your text here") with a normal opening bracket, straight quotes, and a closing bracket.'},
+      {err:"ModuleNotFoundError: No module named 'xyz'",why:"You tried to use a library that is not installed yet.",fix:"Open the VS Code terminal and type: pip install xyz (replace xyz with the actual library name)."},
+    ]
+  },
+  {
+    id:'vars',name:'Variables & Numbers',icon:'🔢',xp:80,time:'12 min',deps:['setup'],
+    blurb:'Store revenue, costs, profit as named values.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">What a variable actually is</div>
+  <div class="ls-body">
+    A variable is a <strong>named storage box</strong>. You give it a name, you put a value in it, and you can use that name anywhere later to get the value back. That is the complete concept.
+    <br><br>
+    In the Financial Intelligence Engine, <strong>every single piece of data</strong> — every revenue figure, every cost, every calculated profit — lives inside a variable. You cannot build the engine without understanding this.
+  </div>
+</div>
+<div class="analogy-box">
+  <div class="ab-label">💡 ANALOGY</div>
+  <p>Think of a variable like a labelled envelope. You write "monthly_revenue" on the outside. You put 45000 inside. Whenever you need that number, you just say its name — "monthly_revenue" — and Python hands you the envelope and tells you what is inside.</p>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">The = sign means "store", not "equals"</div>
+  <div class="ls-body">
+    This trips up beginners every time. In maths, <strong>= means both sides are equal</strong>. In Python, <strong>= means "take what is on the right and store it in the name on the left."</strong>
+    <br><br>
+    So <em>profit = revenue - costs</em> means: calculate revenue minus costs, then store the result in a box called "profit". It is an instruction, not a statement of equality.
+  </div>
+</div>
+<div class="warn-box">
+  <div class="wb-label">⚠ COMMON MISTAKE</div>
+  <p>Variable names cannot have spaces. <strong>monthly revenue = 45000</strong> crashes. Use underscores instead: <strong>monthly_revenue = 45000</strong>. Also: variable names are case-sensitive. <strong>Revenue</strong> and <strong>revenue</strong> are two different boxes.</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">monthly_revenue</span> = <span class="nm">45000</span>
+<span class="nm">monthly_costs</span>   = <span class="nm">28000</span>
+<span class="nm">profit</span> = <span class="nm">monthly_revenue</span> - <span class="nm">monthly_costs</span>
+<span class="fn">print</span>(<span class="st">"Monthly profit:"</span>, <span class="nm">profit</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">monthly_revenue</span> = <span class="nm">45000</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Creates a box named <strong>monthly_revenue</strong> and stores the number 45000 in it. No quotes around 45000 — quotes are for text only, not numbers. Numbers go in raw.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">profit</span> = <span class="nm">monthly_revenue</span> - <span class="nm">monthly_costs</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Python looks up the value in <strong>monthly_revenue</strong> (45000), looks up <strong>monthly_costs</strong> (28000), subtracts them (17000), then stores 17000 in a new box called <strong>profit</strong>. The calculation happens on the right side first, then the result is stored.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="fn">print</span>(<span class="st">"Profit:"</span>, <span class="nm">profit</span>)</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">print() can take multiple things separated by commas. It prints them all with a space between. The text <strong>"Profit:"</strong> appears first, then the value stored in the <strong>profit</strong> variable (17000). Output: <em>Profit: 17000</em></div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Create a basic financial snapshot for a fictional business.',
+      steps:[
+        'Create variables: <strong>revenue = 52000</strong>, <strong>rent = 8000</strong>, <strong>staff = 15000</strong>, <strong>supplies = 6000</strong>',
+        'Calculate: <strong>total_costs = rent + staff + supplies</strong>',
+        'Calculate: <strong>profit = revenue - total_costs</strong>',
+        'Print: <strong>Revenue, total costs, and profit on separate lines</strong>',
+        'Paste your complete output below'
+      ],
+      inputLabel:'Paste all three output lines:',
+      placeholder:'52000\n29000\n23000',
+      grader:(v)=>{
+        const n=v.replace(/[^0-9\n ]/g,' ').trim();
+        if(n.includes('52000')&&n.includes('29000')&&n.includes('23000')) return {pass:true,msg:'Correct. Revenue: 52000, Costs: 29000, Profit: 23000. You just wrote the core calculation the Financial Intelligence Engine runs on every business that uploads their data.'};
+        if(n.includes('52000')&&!n.includes('29000')) return {partial:true,msg:'Revenue is right (52000). Check your total_costs calculation — it should be rent + staff + supplies = 8000 + 15000 + 6000 = 29000.'};
+        if(n.includes('23000')&&!n.includes('52000')) return {partial:true,msg:'Profit is right (23000) but make sure you are also printing revenue and total_costs on separate lines.'};
+        return {fail:true,msg:'Expected output:\n52000\n29000\n23000\n\nCheck: (1) All three print() statements present? (2) total_costs = rent + staff + supplies? (3) profit = revenue - total_costs?'};
+      }
+    },
+    errors:[
+      {err:"NameError: name 'monthly_revenue' is not defined",why:"You tried to use a variable before creating it, or you have a typo in the name. Python is case-sensitive: monthly_Revenue and monthly_revenue are different.",fix:"Check the spelling exactly matches between where you created the variable and where you used it. Also make sure the creation line (=) comes before the usage line."},
+      {err:"SyntaxError on the = line",why:"Variable names cannot start with a number, contain spaces, or use special characters like hyphens.",fix:"Use underscores for spaces. Wrong: monthly-revenue. Right: monthly_revenue. Wrong: 2ndRevenue. Right: second_revenue."},
+      {err:"print shows the wrong number",why:"The calculation on the right side of = ran correctly but you may have stored the result in the wrong variable name, or printed the wrong variable.",fix:"Add print() statements after each variable to see what is stored: print(monthly_revenue), print(monthly_costs), print(profit)."},
+    ]
+  },
+  {
+    id:'strings',name:'Strings & f-strings',icon:'📝',xp:60,time:'10 min',deps:['vars'],
+    blurb:'Display results in plain English, not just numbers.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">What a string is</div>
+  <div class="ls-body">
+    A <strong>string</strong> is any text in Python. The word "string" comes from "string of characters." Every time you wrap something in quotes, you have a string: <em>"hello"</em>, <em>"K45,000"</em>, <em>"Monthly Report"</em>.
+    <br><br>
+    In AI-BOS, <strong>every insight, every alert, every report header is a string</strong>. When the AI CFO says "Your profit margin dropped 8% this month" — that is a string. Understanding strings means you can control exactly what the system says to a business owner.
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">f-strings — embedding variables in text</div>
+  <div class="ls-body">
+    An f-string is a string that can <strong>pull variable values into itself automatically</strong>. You put an f before the opening quote, and use curly braces {} to mark where you want a variable's value inserted.
+    <br><br>
+    This is how AI-BOS generates personalised messages: <em>f"Your profit this month is K{profit:,}"</em> → <em>"Your profit this month is K17,000"</em>. The :, inside the curly braces adds thousands separators to numbers automatically.
+  </div>
+</div>
+<div class="tip-box">
+  <div class="tb-label">✓ THE :, FORMAT TRICK</div>
+  <p>When printing large numbers, add <strong>:,</strong> inside the curly braces: <strong>f"Revenue: K{revenue:,}"</strong>. This formats 45000 as 45,000 — much more readable in a financial report. For decimals: <strong>{margin:.1f}</strong> shows one decimal place.</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">business</span> = <span class="st">"Mama's Kitchen"</span>
+<span class="nm">profit</span>   = <span class="nm">17000</span>
+<span class="nm">margin</span>   = <span class="nm">37.8</span>
+
+<span class="fn">print</span>(<span class="st">f"Business: </span><span class="nm">{business}</span><span class="st">"</span>)
+<span class="fn">print</span>(<span class="st">f"Profit: K</span><span class="nm">{profit:,}</span><span class="st">"</span>)
+<span class="fn">print</span>(<span class="st">f"Margin: </span><span class="nm">{margin:.1f}</span><span class="st">%"</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="st">f"Business: </span><span class="nm">{business}</span><span class="st">"</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">The <strong>f</strong> before the quote activates f-string mode. <strong>{business}</strong> is replaced with whatever value is stored in the business variable. Output: <em>Business: Mama's Kitchen</em></div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">{profit:,}</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">The <strong>:,</strong> after the variable name is a format instruction. It adds comma separators to the number. 17000 becomes 17,000. Crucial for financial reports — no one wants to read K1735249 without commas.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">{margin:.1f}</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain"><strong>.1f</strong> means: show this as a decimal number (f = float) with 1 digit after the decimal point. 37.8456 becomes 37.8. Essential for displaying percentages cleanly.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Generate a formatted one-line financial summary.',
+      steps:[
+        'Create: <strong>name = "Lusaka Hotel"</strong>, <strong>revenue = 120000</strong>, <strong>profit = 18500</strong>',
+        'Calculate margin: <strong>margin = (profit / revenue) * 100</strong>',
+        'Print this exact format using an f-string:<br><em>Lusaka Hotel — Revenue: K120,000 | Profit: K18,500 | Margin: 15.4%</em>',
+        'Paste your output below'
+      ],
+      inputLabel:'Paste your output line:',
+      placeholder:'Lusaka Hotel — Revenue: K120,000 | Profit: K18,500 | Margin: 15.4%',
+      grader:(v)=>{
+        const t=v.trim();
+        if(t.includes('Lusaka Hotel')&&t.includes('120,000')&&t.includes('18,500')&&t.includes('15.4')) return {pass:true,msg:'Perfect formatting. This is exactly how AI-BOS generates the one-line business summary shown at the top of every client dashboard.'};
+        if(t.includes('120000')&&!t.includes('120,000')) return {partial:true,msg:'The number is right but missing the comma formatting. Change {revenue} to {revenue:,} in your f-string.'};
+        if(t.includes('15.4')&&!t.includes('Lusaka')) return {partial:true,msg:'Margin is correct. Make sure you include the business name at the start.'};
+        if(t.includes('Lusaka')&&!t.includes('15.4')) return {partial:true,msg:'Name is showing. Check the margin calculation: (18500 / 120000) * 100 = 15.416... which rounds to 15.4 with :.1f'};
+        return {fail:true,msg:'Try building the f-string step by step. First print just the name. Then add revenue. Then add profit. Then add margin. Test after each addition.'};
+      }
+    },
+    errors:[
+      {err:"SyntaxError: f-string: empty expression not allowed",why:"You wrote {} with nothing inside the curly braces, or forgot the variable name.",fix:'Make sure every {} has a variable name inside: {profit} not {}.'},
+      {err:"KeyError or the variable name appears literally in the output",why:"You wrote the variable name outside the curly braces, so Python printed the text literally instead of the value.",fix:'Wrong: f"Profit: profit". Right: f"Profit: {profit}". The curly braces are what tells Python to replace the name with the value.'},
+      {err:"ValueError: Unknown format code",why:"The format specification inside :, or :.1f is wrong.",fix:'For thousands separator use :, and for decimals use :.Nf where N is the number of decimal places. Never mix them as :,1f.'},
+    ]
+  },
+  {
+    id:'lists',name:'Lists',icon:'📋',xp:90,time:'15 min',deps:['strings'],
+    blurb:'Store 12 months of data in one named collection.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">Why lists exist</div>
+  <div class="ls-body">
+    What if you need to store 12 months of revenue? Without lists, you would write 12 separate variables: <em>jan_revenue, feb_revenue, mar_revenue...</em> That is 12 lines just to store data, and impossible to loop through automatically.
+    <br><br>
+    A <strong>list</strong> holds multiple values in one named variable, in order. <em>revenues = [42000, 45000, 38000...]</em> — one variable, all 12 values, ready to calculate against. <strong>When a business uploads their annual spreadsheet, it arrives as a list of rows.</strong>
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">Indexing — how to get one item from a list</div>
+  <div class="ls-body">
+    Lists are ordered and numbered starting from <strong>0, not 1</strong>. This surprises everyone. The first item is at position 0, the second at position 1, and so on.
+    <br><br>
+    <em>revenues[0]</em> gives you the first value. <em>revenues[11]</em> gives you the twelfth. <em>revenues[-1]</em> gives you the last item (negative indexing counts backwards). You almost never need to use indexing directly — built-in functions like max(), min(), sum() handle lists automatically.
+  </div>
+</div>
+<div class="warn-box">
+  <div class="wb-label">⚠ THE ZERO-INDEX TRAP</div>
+  <p>Python starts counting at 0. A list with 12 items has positions 0 through 11. If you try revenues[12] on a 12-item list, Python throws an IndexError because position 12 does not exist. When converting to "human" month numbers, always add 1: month_number + 1.</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">revenues</span> = [<span class="nm">42000</span>, <span class="nm">45000</span>, <span class="nm">38000</span>, <span class="nm">51000</span>, <span class="nm">49000</span>, <span class="nm">55000</span>]
+
+<span class="fn">print</span>(<span class="fn">max</span>(<span class="nm">revenues</span>))      <span class="cm"># 55000</span>
+<span class="fn">print</span>(<span class="fn">min</span>(<span class="nm">revenues</span>))      <span class="cm"># 38000</span>
+<span class="fn">print</span>(<span class="fn">sum</span>(<span class="nm">revenues</span>))      <span class="cm"># 280000</span>
+<span class="fn">print</span>(<span class="fn">len</span>(<span class="nm">revenues</span>))      <span class="cm"># 6</span>
+<span class="fn">print</span>(<span class="nm">revenues</span>[<span class="nm">0</span>])       <span class="cm"># 42000 (first item)</span>
+<span class="fn">print</span>(<span class="nm">revenues</span>[-<span class="nm">1</span>])      <span class="cm"># 55000 (last item)</span></pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code">[<span class="nm">42000</span>, <span class="nm">45000</span>, ...]</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Square brackets create a list. Items inside are separated by commas. The list is stored in the variable <strong>revenues</strong>. You can mix numbers, strings, and other types — though in AI-BOS lists usually contain one consistent type.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="fn">sum</span>(<span class="nm">revenues</span>) / <span class="fn">len</span>(<span class="nm">revenues</span>)</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">This is how you calculate an average. <strong>sum()</strong> adds all values. <strong>len()</strong> returns how many items are in the list. Dividing total by count gives the average. Python has no built-in average() function — you build it this way.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Analyse 6 months of revenue data.',
+      steps:[
+        'Create: <strong>revenues = [38000, 45000, 29000, 52000, 48000, 61000]</strong>',
+        'Print the <strong>highest</strong> month revenue',
+        'Print the <strong>lowest</strong> month revenue',
+        'Print the <strong>total</strong> for all 6 months',
+        'Calculate and print the <strong>average</strong> monthly revenue (use sum/len)',
+        'Paste all four output lines below'
+      ],
+      inputLabel:'Paste your four output lines:',
+      placeholder:'61000\n29000\n273000\n45500.0',
+      grader:(v)=>{
+        const has=(x)=>v.includes(String(x));
+        if(has(61000)&&has(29000)&&has(273000)&&(has('45500'))) return {pass:true,msg:'All correct. Max: 61,000 | Min: 29,000 | Total: 273,000 | Average: 45,500. These four statistics are the foundation of every monthly summary the AI CFO generates.'};
+        if(has(61000)&&has(29000)&&!has(273000)) return {partial:true,msg:'Max and min are right. Check your sum — should be 38000+45000+29000+52000+48000+61000 = 273000.'};
+        if(!has(61000)) return {fail:true,msg:'Max is wrong. Use max(revenues) not a manual check. It should return 61000.'};
+        return {partial:true,msg:'Some values are right. Check each one: max=61000, min=29000, sum=273000, average=45500.0'};
+      }
+    },
+    errors:[
+      {err:"IndexError: list index out of range",why:"You tried to access a position that does not exist. If your list has 6 items, valid positions are 0 to 5.",fix:'Never access a position >= len(list). Use revenues[-1] to safely get the last item regardless of list length.'},
+      {err:"TypeError: unsupported operand type(s) for +: 'int' and 'str'",why:"Your list contains a mix of numbers and strings. For example ['42000', 45000] — note the quotes around the first item making it text, not a number.",fix:'Remove quotes from numbers inside the list. Numbers should be bare: [42000, 45000] not ["42000", 45000].'},
+    ]
+  },
+  {
+    id:'loops',name:'For Loops',icon:'🔄',xp:100,time:'20 min',deps:['lists'],
+    blurb:'Automatically scan every row of business data.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">Why loops are the engine of AI-BOS</div>
+  <div class="ls-body">
+    A loop runs the same block of code <strong>on every item in a list, automatically</strong>. Without loops, to check 500 rows of sales data you would need to write 500 nearly identical lines of code. With a loop, you write it once and Python handles all 500.
+    <br><br>
+    <strong>The variance detection system, the alert engine, and the cash flow analyser all use loops</strong> to scan every row of a business's data. When you later call detect_variances(df), a loop is running under the hood on every single transaction row.
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">How indentation works — this is critical</div>
+  <div class="ls-body">
+    Python uses <strong>indentation (spaces)</strong> to know what belongs inside the loop. Unlike most languages that use {} brackets, Python uses whitespace. <strong>Every line that should run inside the loop must be indented with exactly 4 spaces (or one Tab).</strong>
+    <br><br>
+    If your indentation is wrong, Python either crashes or silently runs code outside the loop — giving you wrong results with no error message. This is one of the most common beginner bugs.
+  </div>
+</div>
+<div class="analogy-box">
+  <div class="ab-label">💡 ANALOGY</div>
+  <p>A loop is like a factory conveyor belt. You program the worker once: "check if this box is heavy, if yes put a red sticker on it." Then you hit play and the belt sends every box through that same worker automatically. The worker's instructions are the indented code block.</p>
+</div>
+<div class="warn-box">
+  <div class="wb-label">⚠ enumerate() vs range(len())</div>
+  <p>You will see two patterns: <strong>for i, item in enumerate(list)</strong> and <strong>for i in range(len(list))</strong>. Use enumerate() — it is cleaner and gives you both the index AND the value simultaneously. range(len()) forces you to then write list[i] to get the value, adding an extra step and an extra potential error.</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">revenues</span> = [<span class="nm">42000</span>, <span class="nm">29000</span>, <span class="nm">51000</span>, <span class="nm">38000</span>, <span class="nm">55000</span>]
+
+<span class="kw">for</span> <span class="nm">i</span>, <span class="nm">rev</span> <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="nm">revenues</span>):
+    <span class="kw">if</span> <span class="nm">rev</span> < <span class="nm">40000</span>:
+        <span class="fn">print</span>(<span class="st">f"⚠ Month </span><span class="nm">{i+1}</span><span class="st">: low revenue K</span><span class="nm">{rev:,}</span><span class="st">"</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">for</span> <span class="nm">i</span>, <span class="nm">rev</span> <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="nm">revenues</span>):</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain"><strong>enumerate()</strong> gives you two things each iteration: the position number (i) and the value (rev). The comma in <strong>i, rev</strong> is called unpacking — Python automatically splits the pair into your two variables. The colon at the end is mandatory — it signals the start of the indented block.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code">    <span class="kw">if</span> <span class="nm">rev</span> < <span class="nm">40000</span>:</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">4 spaces of indentation — this line is inside the loop. It runs once per item. The if statement checks the condition for the current item only.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">i+1</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">enumerate() starts at 0, but months start at 1 for humans. Adding 1 converts from zero-indexed to human-readable. Month 0 → Month 1, Month 1 → Month 2, etc.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Build the core of the Variance Alert Engine.',
+      steps:[
+        'Create: <strong>revenues = [45000, 42000, 51000, 29000, 48000, 55000]</strong>',
+        'Loop through with enumerate',
+        'Inside the loop: if revenue is below 35000, print an alert: <strong>⚠ Month X: ALERT — K[amount]</strong>',
+        'Only months below 35000 should trigger the alert (only month 4 at 29000)',
+        'Paste your output'
+      ],
+      inputLabel:'Paste your output (should be 1 alert line):',
+      placeholder:'⚠ Month 4: ALERT — K29,000',
+      grader:(v)=>{
+        const t=v.trim();
+        if(t.includes('4')&&t.includes('29')) return {pass:true,msg:'Correct. Only month 4 (29000) is below 35000. This exact loop — checking every row against a threshold and printing an alert — is the core of the Financial Engine variance detection system.'};
+        if(t.includes('29')&&!t.includes('4')) return {partial:true,msg:'You identified the right revenue (29000) but the month number is wrong. Remember: enumerate starts at 0, so add 1 to i to get the human month number.'};
+        if(t.includes('4')&&!t.includes('29')) return {partial:true,msg:'Month number is right but the revenue amount is off. Check: revenues[3] (index 3 = month 4) should be 29000.'};
+        if(t.includes('Month 1')||t.includes('Month 2')) return {fail:true,msg:'You are alerting months that are not below 35000. Check your threshold: if rev < 35000. Months 1-3 and 5-6 are all above 35000.'};
+        return {fail:true,msg:'Nothing printed — either the loop is not running or the condition is not triggering. Test by first printing ALL revenues in the loop without an if condition, then add the if back.'};
+      }
+    },
+    errors:[
+      {err:"IndentationError: expected an indented block",why:"The line after the for: or if: has no indentation. Python requires the body of a loop or condition to be indented.",fix:"Add 4 spaces (or press Tab) at the start of every line that should be inside the for loop or if statement."},
+      {err:"IndentationError: unexpected indent",why:"A line has extra indentation where Python did not expect it.",fix:'Make sure all lines at the same logical level have identical indentation. Do not mix tabs and spaces.'},
+      {err:"The loop runs but prints nothing",why:"Your if condition is never True, so the print() inside never runs.",fix:'Temporarily remove the if statement and just print every rev to confirm the loop is running and the values are what you expect. Then re-add the if condition.'},
+    ]
+  },
+  {
+    id:'dicts',name:'Dictionaries',icon:'🗂️',xp:100,time:'18 min',deps:['loops'],
+    blurb:'Label your data — like a spreadsheet row with column names.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">The difference between a list and a dict</div>
+  <div class="ls-body">
+    A list stores values by <strong>position</strong>: revenues[0], revenues[1]. A dictionary stores values by <strong>name</strong>: month["revenue"], month["costs"]. The name is called a <em>key</em> and what it maps to is called a <em>value</em>.
+    <br><br>
+    Think of a spreadsheet row: column A is "Revenue", column B is "Costs", column C is "Month". A dictionary is exactly that row — each column name (key) maps to the cell value. <strong>When pandas loads your spreadsheet, each row becomes a dictionary.</strong>
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">Why dicts matter for AI-BOS</div>
+  <div class="ls-body">
+    When you send data to the Claude API, you format it as a dictionary. When the API sends back structured results, they come back as dictionaries. When you read a database row from Supabase, it arrives as a dictionary. <strong>Dictionaries are the universal data format of AI-BOS's internal communication.</strong>
+  </div>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">month</span> = {
+    <span class="st">"name"</span>:    <span class="st">"January"</span>,
+    <span class="st">"revenue"</span>: <span class="nm">45000</span>,
+    <span class="st">"costs"</span>:   <span class="nm">28000</span>
+}
+<span class="nm">month</span>[<span class="st">"profit"</span>] = <span class="nm">month</span>[<span class="st">"revenue"</span>] - <span class="nm">month</span>[<span class="st">"costs"</span>]
+<span class="fn">print</span>(<span class="st">f"</span><span class="nm">{month['name']}</span><span class="st"> profit: K</span><span class="nm">{month['profit']:,}</span><span class="st">"</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code">{<span class="st">"name"</span>: <span class="st">"January"</span>, ...}</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Curly braces create a dict (not a list — lists use square brackets). Each entry is <strong>key: value</strong> separated by a colon. Entries are separated by commas. Keys must be strings (in quotes). Values can be any type.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">month</span>[<span class="st">"profit"</span>] = ...</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">You can add new keys to a dict after creation, just like creating a new variable. This is how the Financial Engine adds calculated fields — it loads the raw data, then adds computed columns like "profit" and "margin".</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="nm">month</span>[<span class="st">'name'</span>]</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Inside an f-string's curly braces, use <strong>single quotes</strong> for the dict key. The outer f-string already uses double quotes, so inner dict access must use single quotes to avoid conflicting.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Build a complete business month record as a dictionary.',
+      steps:[
+        'Create a dict with keys: <strong>business, month, revenue, costs</strong>',
+        'Use your own fictional values',
+        'Add a calculated <strong>profit</strong> key',
+        'Add a calculated <strong>margin</strong> key (profit/revenue*100, rounded to 1 decimal)',
+        'Loop through all 5 keys with: <strong>for key, value in month.items(): print(key, "→", value)</strong>',
+        'Paste your complete output'
+      ],
+      inputLabel:'Paste your output (5 lines, one per key):',
+      placeholder:'business → My Shop\nmonth → January\nrevenue → 30000\ncosts → 20000\nprofit → 10000\nmargin → 33.3',
+      grader:(v)=>{
+        const lines=v.trim().split('\n').filter(l=>l.trim());
+        if(lines.length>=5&&v.includes('→')) return {pass:true,msg:'Great. You created a multi-field record and iterated over it. The .items() method returns key-value pairs — this is exactly how pandas row data is structured when you iterate over a DataFrame.'};
+        if(lines.length>0&&!v.includes('→')) return {partial:true,msg:'Looks like you printed the dict but without the for loop. Try: for key, value in month.items(): print(key, "→", value)'};
+        return {fail:true,msg:'Create the dict first, calculate profit and margin, then use the for loop with .items() to print each key-value pair.'};
+      }
+    },
+    errors:[
+      {err:"KeyError: 'revenue'",why:"You tried to access a key that does not exist in the dict, or you misspelled it.",fix:'Check spelling exactly. Dicts are case-sensitive. "Revenue" and "revenue" are different keys. Use print(dict.keys()) to see all available keys.'},
+      {err:"SyntaxError inside the dict definition",why:"Missing comma between entries, or mixed up : and = inside the dict.",fix:'Dict syntax: {key: value, key: value}. Use colons between key and value. Use commas between entries. The last entry does not need a trailing comma (though it is allowed).'},
+    ]
+  },
+  {
+    id:'funcs',name:'Functions',icon:'⚡',xp:120,time:'22 min',deps:['dicts'],
+    blurb:'Write a calculation once, use it for every business on the platform.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">The core idea</div>
+  <div class="ls-body">
+    A function is a <strong>reusable block of code with a name</strong>. Instead of writing the profit calculation 200 times for 200 businesses, you write it once inside a function, give it a name, and then call that name whenever you need it.
+    <br><br>
+    <strong>The entire Financial Intelligence Engine is a collection of functions.</strong> calculate_pnl(), detect_variances(), forecast_cashflow(), score_health() — each is a function. When a business uploads their data, AI-BOS calls these functions in sequence and assembles the results into a dashboard.
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">Parameters and return values</div>
+  <div class="ls-body">
+    A function takes <strong>inputs (parameters)</strong> and produces <strong>outputs (return values)</strong>. Parameters go in the brackets after the function name. return sends the result back to whoever called the function.
+    <br><br>
+    <strong>Without return, the function does the work but the result disappears.</strong> You need return to capture and use the result. Think of it as: parameters = the raw ingredients going into the factory, return = the finished product coming out.
+  </div>
+</div>
+<div class="tip-box">
+  <div class="tb-label">✓ RETURNING MULTIPLE VALUES</div>
+  <p>Python functions can return multiple values separated by commas: <strong>return profit, margin</strong>. Capture them with: <strong>p, m = calculate_profit(revenue, costs)</strong>. This comma-separated assignment is called unpacking — same concept as enumerate().</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">calculate_profit</span>(<span class="nm">revenue</span>, <span class="nm">costs</span>):
+    <span class="nm">profit</span> = <span class="nm">revenue</span> - <span class="nm">costs</span>
+    <span class="nm">margin</span> = <span class="fn">round</span>((<span class="nm">profit</span> / <span class="nm">revenue</span>) * <span class="nm">100</span>, <span class="nm">1</span>)
+    <span class="kw">return</span> <span class="nm">profit</span>, <span class="nm">margin</span>
+
+<span class="nm">p</span>, <span class="nm">m</span> = <span class="fn">calculate_profit</span>(<span class="nm">45000</span>, <span class="nm">28000</span>)
+<span class="fn">print</span>(<span class="st">f"Profit: K{p:,} | Margin: {m}%"</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">def</span> <span class="fn">calculate_profit</span>(<span class="nm">revenue</span>, <span class="nm">costs</span>):</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain"><strong>def</strong> is short for "define" — you are defining a new function. The name follows Python variable naming rules (no spaces, underscores for spaces). The parameters (revenue, costs) are placeholder names — they receive whatever values are passed in when the function is called.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">return</span> <span class="nm">profit</span>, <span class="nm">margin</span></div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Returns two values. Python bundles them into a pair automatically. The line <strong>p, m = calculate_profit(45000, 28000)</strong> unpacks that pair — p gets profit, m gets margin. If you only write <strong>result = calculate_profit()</strong>, result will be a tuple (17000, 37.8) — both values together.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="fn">round</span>(<span class="nm">value</span>, <span class="nm">1</span>)</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">round() is a Python built-in. First argument is the number, second is how many decimal places to keep. round(37.844, 1) = 37.8. Without this, Python shows 37.77777777... which looks unprofessional in a report.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Write the health score function — a core Financial Engine component.',
+      steps:[
+        'Write a function <strong>classify_margin(margin)</strong> that takes a margin percentage',
+        'If margin < 5: return <strong>"CRITICAL"</strong>',
+        'If margin < 15: return <strong>"WARNING"</strong>',
+        'If margin < 30: return <strong>"HEALTHY"</strong>',
+        'Otherwise: return <strong>"EXCELLENT"</strong>',
+        'Test it by calling the function with values: 3, 12, 22, 45',
+        'Print the result for each call'
+      ],
+      inputLabel:'Paste your 4 output lines:',
+      placeholder:'CRITICAL\nWARNING\nHEALTHY\nEXCELLENT',
+      grader:(v)=>{
+        const t=v.toUpperCase();
+        if(t.includes('CRITICAL')&&t.includes('WARNING')&&t.includes('HEALTHY')&&t.includes('EXCELLENT')) return {pass:true,msg:'Perfect. All four classifications correct. This classify_margin() function plugs directly into the Financial Engine health score system — it is called once per business after the P&L calculation.'};
+        if(t.includes('CRITICAL')&&t.includes('WARNING')&&!t.includes('EXCELLENT')) return {partial:true,msg:'CRITICAL and WARNING are correct. For 22% → HEALTHY (between 15 and 30). For 45% → EXCELLENT (30 and above). Check your elif thresholds.'};
+        if(!t.includes('CRITICAL')) return {fail:true,msg:'Test with margin=3 first. Make sure the function is defined with def before calling it. Also make sure you call it: result = classify_margin(3) and then print(result).'};
+        return {partial:true,msg:'Some correct. Double-check: 3→CRITICAL, 12→WARNING, 22→HEALTHY, 45→EXCELLENT'};
+      }
+    },
+    errors:[
+      {err:"The function does nothing / returns None",why:"You forgot the return statement, or the return is outside the function (not indented).",fix:'Every code path inside the function must reach a return statement. Check that return is indented under def — without that indentation it is outside the function.'},
+      {err:"NameError when calling the function",why:"You tried to call the function before defining it, or the name does not match exactly.",fix:'def must appear before the call. The name in def calculate_profit(): must match exactly what you call: calculate_profit(). Check capitalisation and spelling.'},
+      {err:"TypeError: calculate_profit() takes 2 positional arguments but 3 were given",why:"You defined the function with 2 parameters but called it with 3 values (or vice versa).",fix:'Count the parameters in def and the arguments in your call — they must match exactly.'},
+    ]
+  },
+  {
+    id:'ifelse',name:'If / Else Logic',icon:'🧠',xp:80,time:'14 min',deps:['funcs'],
+    blurb:'Make decisions: trigger alerts, classify status, route logic.',
+    learn:`
+<div class="lesson-section">
+  <div class="ls-label">Decision logic in AI-BOS</div>
+  <div class="ls-body">
+    Every decision the Financial Engine makes runs through if/else. "If margin is below 10%, classify as CRITICAL." "If cash flow will go negative in 60 days, send an alert." "If revenue grew more than 20%, flag as a growth opportunity."
+    <br><br>
+    <strong>If/else is how the engine makes judgements</strong>. Without it, the engine could only calculate — it could not draw conclusions. The intelligence layer of AI-BOS is, at its foundation, a well-engineered set of conditional rules applied to data.
+  </div>
+</div>
+<div class="lesson-section">
+  <div class="ls-label">elif — the "otherwise if" chain</div>
+  <div class="ls-body">
+    When you have more than two outcomes, use <strong>elif</strong> (else if). Python checks each condition in order. The moment one is True, it runs that block and skips all remaining elif and else. <strong>Order matters</strong> — if you check for margin > 0 before margin > 25, everything will be caught by the first condition and the rest never run.
+  </div>
+</div>
+<div class="warn-box">
+  <div class="wb-label">⚠ == vs = IN CONDITIONS</div>
+  <p>Inside an if condition, use <strong>==</strong> (double equals) to CHECK equality. Single <strong>=</strong> is for ASSIGNMENT (storing a value). Writing <strong>if margin = 15:</strong> is a SyntaxError. Writing <strong>if margin == 15:</strong> checks if margin equals 15. This trips up beginners constantly.</p>
+</div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">generate_alert</span>(<span class="nm">margin</span>, <span class="nm">prev_margin</span>):
+    <span class="nm">change</span> = <span class="nm">margin</span> - <span class="nm">prev_margin</span>
+
+    <span class="kw">if</span> <span class="nm">margin</span> < <span class="nm">5</span>:
+        <span class="kw">return</span> <span class="st">f"🔴 CRITICAL: margin at {margin}%"</span>
+    <span class="kw">elif</span> <span class="nm">change</span> < -<span class="nm">10</span>:
+        <span class="kw">return</span> <span class="st">f"🟡 WARN: margin dropped {change:.1f}%"</span>
+    <span class="kw">elif</span> <span class="nm">margin</span> > <span class="nm">30</span>:
+        <span class="kw">return</span> <span class="st">f"🚀 GREAT: strong margin {margin}%"</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="st">f"✓ Stable at {margin}%"</span></pre></div>
+<div class="line-breakdown">
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">if</span> <span class="nm">margin</span> < <span class="nm">5</span>:</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Checked first. If margin is below 5, return the CRITICAL message immediately. The function stops here — elif and else are never evaluated.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">elif</span> <span class="nm">change</span> < -<span class="nm">10</span>:</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">Only evaluated if the first condition was False. Checks a different thing (the change from last month). Note <strong>-10</strong> — negative number. If margin dropped by more than 10 percentage points, trigger a warning.</div>
+  </div>
+  <div class="lb-item">
+    <div class="lb-code"><span class="kw">else</span>:</div>
+    <div class="lb-arrow">→</div>
+    <div class="lb-explain">The catch-all. Only runs if ALL previous conditions were False. else has no condition — it catches everything that did not match above. It is always last and has no colon-condition pair.</div>
+  </div>
+</div>`,
+    exercise:{
+      task:'Build the mini alert engine — a complete if/elif/else decision tree.',
+      steps:[
+        'Write a function <strong>analyse_month(revenue, prev_revenue, costs)</strong>',
+        'Calculate profit and margin inside it',
+        'Calculate change = revenue - prev_revenue',
+        'Return CRITICAL if margin < 8',
+        'Return DECLINING if revenue dropped more than 15% from prev_revenue',
+        'Return GROWING if revenue grew more than 15%',
+        'Return STABLE otherwise',
+        'Test: analyse_month(25000, 45000, 22000) → should be DECLINING',
+        'Paste the result'
+      ],
+      inputLabel:'Paste the result for analyse_month(25000, 45000, 22000):',
+      placeholder:'DECLINING',
+      grader:(v)=>{
+        const t=v.trim().toUpperCase();
+        if(t.includes('DECLINING')) return {pass:true,msg:'Correct. Revenue dropped from 45000 to 25000 — a 44% drop, well above the 15% threshold. Note the margin here is (3000/25000)=12%, which is above 8%, so CRITICAL does not trigger first. The order of your conditions matters — always check most critical first.'};
+        if(t.includes('CRITICAL')) return {partial:true,msg:'Check the margin: (25000-22000)/25000 = 12% which is above the 8% threshold. So CRITICAL should not trigger. DECLINING should trigger because (25000-45000)/45000 = -44%.'};
+        if(t.includes('STABLE')) return {partial:true,msg:'You got STABLE — the change check is not triggering. Calculate: (revenue - prev_revenue) / prev_revenue = (25000-45000)/45000 = -0.44 = -44%. The drop is more than 15%, so DECLINING should trigger.'};
+        return {fail:true,msg:'Build step by step: (1) calculate profit=revenue-costs, (2) calculate margin=(profit/revenue)*100, (3) calculate pct_change=(revenue-prev_revenue)/prev_revenue, (4) write the if/elif/else chain checking each condition.'};
+      }
+    },
+    errors:[
+      {err:"All conditions fall through to else even when they should trigger",why:"Your conditions may be in the wrong order, or you are using = instead of == for equality checks, or the comparison is backwards.",fix:'Print the values being compared before the if chain: print(margin, change). This lets you see what Python is actually comparing.'},
+      {err:"SyntaxError: invalid syntax on the if line",why:"Missing colon at the end of the if/elif/else line, or using = instead of ==.",fix:'Every if, elif, and else line must end with a colon: if margin < 5: (not if margin < 5)'},
+    ]
+  },
+  ]
+},
+{
+  id:'s2',name:'pandas & Data',color:'#7c3aed',time:'Days 4–6',
+  skills:[
+  {
+    id:'pip',name:'pip & Installing Libraries',icon:'📦',xp:50,time:'8 min',deps:['ifelse'],
+    blurb:'Add superpowers to Python with one command.',
+    learn:`
+<div class="lesson-section"><div class="ls-label">What pip does</div><div class="ls-body">Python's built-in functions are powerful but limited. <strong>pip</strong> (Package Installer for Python) lets you add community-built libraries — pre-written code that handles complex tasks. pandas handles spreadsheets. Streamlit builds web apps. anthropic connects to Claude AI. All installed in seconds with pip.</div></div>
+<div class="tip-box"><div class="tb-label">✓ WHERE TO RUN pip</div><p>pip commands go in the <strong>terminal</strong> (View → Terminal in VS Code), not inside your Python file. They are computer commands, not Python code. Running pip install inside a .py file will cause a SyntaxError.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="cm"># In the VS Code TERMINAL (not your .py file):</span>
+pip install pandas openpyxl plotly streamlit anthropic
+
+<span class="cm"># Then test in your aibos.py file:</span>
+<span class="kw">import</span> <span class="nm">pandas</span> <span class="kw">as</span> <span class="nm">pd</span>
+<span class="fn">print</span>(<span class="st">"pandas version:"</span>, <span class="nm">pd</span>.__version__)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="kw">import</span> <span class="nm">pandas</span> <span class="kw">as</span> <span class="nm">pd</span></div><div class="lb-arrow">→</div><div class="lb-explain"><strong>import</strong> loads the library into your file. <strong>as pd</strong> gives it a short alias — instead of typing pandas.read_csv() everywhere, you type pd.read_csv(). This is convention — always import pandas as pd.</div></div>
+</div>`,
+    exercise:{task:'Install all required libraries and verify.',steps:['Open VS Code terminal (View → Terminal)','Run: <strong>pip install pandas openpyxl plotly streamlit anthropic</strong>','In aibos.py, type: <strong>import pandas as pd</strong> then <strong>print(pd.__version__)</strong>','Run the file and paste the version number'],inputLabel:'Paste the pandas version number:',placeholder:'2.2.0',
+    grader:(v)=>{if(/\d+\.\d+/.test(v.trim())) return {pass:true,msg:'pandas installed and importable. All five libraries are now available. Every import you write from here uses this same pattern: import library as alias.'};return {fail:true,msg:'Expected a version number like 2.2.0. If you see ModuleNotFoundError, the pip install may have failed — check the terminal for errors during installation.'}}},
+    errors:[{err:"pip is not recognized",why:"Python is not on your PATH or pip is not installed.",fix:"In VS Code terminal try: python -m pip install pandas. The -m flag runs pip through Python directly."},{err:"ModuleNotFoundError after import",why:"The library installed but to a different Python than VS Code is using.",fix:"In VS Code bottom bar, check which Python interpreter is selected. Click it and select the one where you installed the packages."}]
+  },
+  {
+    id:'pdread',name:'Read CSV & Excel Files',icon:'📂',xp:100,time:'18 min',deps:['pip'],
+    blurb:'Load real business spreadsheets in two lines of code.',
+    learn:`
+<div class="lesson-section"><div class="ls-label">What a DataFrame is</div><div class="ls-body">When you load a file with pandas, it becomes a <strong>DataFrame</strong> — a table with rows and columns, like a spreadsheet in memory. The variable df is the standard name (short for DataFrame). Every row is a record, every column has a name.<br><br>A DataFrame is smarter than a list of dicts. It has built-in functions for filtering, calculating, grouping, and summarising that handle thousands of rows in milliseconds. This is why pandas is essential for the Financial Engine.</div></div>
+<div class="tip-box"><div class="tb-label">✓ CREATE A TEST FILE FIRST</div><p>Open Notepad or VS Code, create a file called <strong>test_data.csv</strong> with this content:<br>month,revenue,costs<br>Jan,45000,28000<br>Feb,42000,31000<br>Mar,51000,29000<br>Save it in the same folder as aibos.py.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">import</span> <span class="nm">pandas</span> <span class="kw">as</span> <span class="nm">pd</span>
+
+<span class="nm">df</span> = <span class="nm">pd</span>.<span class="fn">read_csv</span>(<span class="st">"test_data.csv"</span>)
+
+<span class="fn">print</span>(<span class="nm">df</span>.<span class="fn">head</span>())
+<span class="fn">print</span>(<span class="nm">df</span>.shape)
+<span class="fn">print</span>(<span class="nm">df</span>.columns.<span class="fn">tolist</span>())</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>.<span class="fn">head</span>()</div><div class="lb-arrow">→</div><div class="lb-explain">Shows the first 5 rows. head(10) shows the first 10. Always run this first after loading to confirm the data looks right before running calculations.</div></div>
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>.shape</div><div class="lb-arrow">→</div><div class="lb-explain">Returns a tuple (rows, columns). For a 3-row, 3-column file: (3, 3). Use this to confirm all rows loaded.</div></div>
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>.columns.<span class="fn">tolist</span>()</div><div class="lb-arrow">→</div><div class="lb-explain">Returns all column names as a list. Critical for catching typos — if your CSV has "Revenue" but you reference df["revenue"] (lowercase), you get a KeyError.</div></div>
+</div>`,
+    exercise:{task:'Load a CSV and verify its contents.',steps:['Create test_data.csv with columns: month, revenue, costs (3 rows of data)','Load it with pd.read_csv()','Print shape, column names, and the first row','Paste your output'],inputLabel:'Paste shape and column names output:',placeholder:'(3, 3)\n[\'month\', \'revenue\', \'costs\']',
+    grader:(v)=>{if((v.includes('3')&&v.includes('month')&&v.includes('revenue'))||v.includes('read')) return {pass:true,msg:'File loaded successfully. You can now load any business spreadsheet in two lines. When AI-BOS users upload their files, this exact code runs on their data.'};return {fail:true,msg:'Make sure test_data.csv is in the same folder as aibos.py. Then check the filename matches exactly (case-sensitive on Mac/Linux).'}}},
+    errors:[{err:"FileNotFoundError: test_data.csv",why:"Python is looking for the file in the current working directory, but the file is not there or the name is wrong.",fix:"Make sure test_data.csv is in the exact same folder as aibos.py. Check spelling and extension (.csv not .CSV)."},{err:"UnicodeDecodeError",why:"The CSV file has special characters that pandas cannot read with the default encoding.",fix:'Add encoding parameter: pd.read_csv("file.csv", encoding="utf-8-sig") — this handles files saved from Excel with special characters.'}]
+  },
+  {
+    id:'pdcols',name:'Column Calculations',icon:'🧮',xp:100,time:'15 min',deps:['pdread'],
+    blurb:'Calculate profit for every row at once — no loop needed.',
+    learn:`<div class="lesson-section"><div class="ls-label">Vector operations — the pandas superpower</div><div class="ls-body">In plain Python, to add profit to 500 rows you need a loop with 500 iterations. In pandas, <strong>df["profit"] = df["revenue"] - df["costs"]</strong> runs on all 500 rows simultaneously. This is called a <em>vector operation</em> and it is why pandas is dramatically faster than loops for data work.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">df</span>[<span class="st">"profit"</span>]     = <span class="nm">df</span>[<span class="st">"revenue"</span>] - <span class="nm">df</span>[<span class="st">"costs"</span>]
+<span class="nm">df</span>[<span class="st">"margin_pct"</span>] = (<span class="nm">df</span>[<span class="st">"profit"</span>] / <span class="nm">df</span>[<span class="st">"revenue"</span>]) * <span class="nm">100</span>
+<span class="nm">df</span>[<span class="st">"margin_pct"</span>] = <span class="nm">df</span>[<span class="st">"margin_pct"</span>].<span class="fn">round</span>(<span class="nm">1</span>)
+<span class="fn">print</span>(<span class="nm">df</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>[<span class="st">"profit"</span>] = ...</div><div class="lb-arrow">→</div><div class="lb-explain">Creates a new column called "profit". The right side runs on every row simultaneously. You do not need to specify which row — pandas applies the operation across the entire column.</div></div>
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>[<span class="st">"margin_pct"</span>].<span class="fn">round</span>(<span class="nm">1</span>)</div><div class="lb-arrow">→</div><div class="lb-explain">Rounds the entire margin column to 1 decimal place. Note: this creates a new series — assign it back to the column or it is discarded.</div></div>
+</div>`,
+    exercise:{task:'Add profit and margin columns to your DataFrame.',steps:['Load your test_data.csv','Add column: df["profit"] = df["revenue"] - df["costs"]','Add column: df["margin_pct"] = (df["profit"] / df["revenue"]) * 100, rounded to 1 decimal','Print the full DataFrame','Paste the output'],inputLabel:'Paste your DataFrame output:',placeholder:'  month  revenue  costs  profit  margin_pct\n0   Jan    45000  28000   17000        37.8',
+    grader:(v)=>{if(v.includes('profit')&&v.includes('margin')&&/\d+\.\d/.test(v)) return {pass:true,msg:'Both columns added. This is the P&L Engine running on real data. The same two lines will run on every business spreadsheet uploaded to AI-BOS — regardless of whether the file has 3 rows or 3000.'};if(v.includes('profit')&&!v.includes('margin')) return {partial:true,msg:'Profit column is there. Add the margin_pct column: df["margin_pct"] = (df["profit"] / df["revenue"]) * 100'};return {fail:true,msg:'Load the CSV first, then add the columns. Print df (without .head()) to see all rows.'}}},
+    errors:[{err:"KeyError: 'revenue'",why:"The column name in your CSV does not match what you typed. Check df.columns.tolist() to see the exact names.",fix:'Column names are case-sensitive. "Revenue" ≠ "revenue". Copy the exact column name from df.columns.tolist() output.'},{err:"ZeroDivisionError when calculating margin",why:"One or more revenue values is 0, making division by zero impossible.",fix:'Add a check: df["margin_pct"] = df.apply(lambda r: (r["profit"]/r["revenue"])*100 if r["revenue"]!=0 else 0, axis=1)'}]
+  },
+  {
+    id:'pdstats',name:'Summary Statistics',icon:'📊',xp:90,time:'12 min',deps:['pdcols'],
+    blurb:'Get instant financial summaries from any dataset.',
+    learn:`<div class="lesson-section"><div class="ls-label">What summary statistics the Financial Engine needs</div><div class="ls-body">Every AI CFO report starts with the same set of numbers: total revenue, total profit, average margin, best month, worst month. pandas has one-line functions for all of these. <strong>Mastering these 6 functions covers 80% of what the Financial Engine needs to compute.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">total_rev</span>    = <span class="nm">df</span>[<span class="st">"revenue"</span>].<span class="fn">sum</span>()
+<span class="nm">avg_profit</span>   = <span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">mean</span>()
+<span class="nm">best_idx</span>     = <span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">idxmax</span>()
+<span class="nm">best_month</span>   = <span class="nm">df</span>.<span class="fn">loc</span>[<span class="nm">best_idx</span>, <span class="st">"month"</span>]
+<span class="nm">worst_margin</span> = <span class="nm">df</span>[<span class="st">"margin_pct"</span>].<span class="fn">min</span>()</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">idxmax</span>()</div><div class="lb-arrow">→</div><div class="lb-explain"><strong>idxmax()</strong> returns the row INDEX of the highest value — not the value itself. Use it with df.loc[idx, "column"] to get any other value from that same row. This is how you say "find the month with the highest profit."</div></div>
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>.<span class="fn">loc</span>[<span class="nm">idx</span>, <span class="st">"month"</span>]</div><div class="lb-arrow">→</div><div class="lb-explain"><strong>loc</strong> accesses a specific row and column by label. df.loc[2, "month"] gets the "month" value from row index 2. Pair it with idxmax/idxmin to get the best/worst month name.</div></div>
+</div>`,
+    exercise:{task:'Generate a complete financial summary from your DataFrame.',steps:['Calculate and print: total revenue, average profit, best month name, worst month name, highest margin, lowest margin'],inputLabel:'Paste all 6 values (one per line):',placeholder:'138000\n16333.33\nMar\nFeb\n44.0\n35.5',
+    grader:(v)=>{const lines=v.trim().split('\n').filter(l=>l.trim());if(lines.length>=4) return {pass:true,msg:'Complete financial summary generated. These six numbers are the exact metrics displayed in the AI CFO Summary Card at the top of every AI-BOS dashboard.'};return {fail:true,msg:'Print each metric on its own line. 6 values total: total_rev, avg_profit, best_month, worst_month, max_margin, min_margin.'}}},
+    errors:[{err:"AttributeError: 'Series' object has no attribute 'idxmax'",why:"You called idxmax() on the whole DataFrame instead of a column.",fix:'Access the column first: df["profit"].idxmax() not df.idxmax("profit")'}]
+  },
+  {
+    id:'pdfilter',name:'Filtering & Alerts',icon:'🔍',xp:90,time:'16 min',deps:['pdstats'],
+    blurb:'Find only the rows that need attention.',
+    learn:`<div class="lesson-section"><div class="ls-label">Boolean filtering</div><div class="ls-body">You can filter a DataFrame by writing a condition inside square brackets. <strong>df[df["margin_pct"] < 15]</strong> returns only the rows where margin is below 15%. This is the core of the Alert Engine — filtering for rows that match danger conditions.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">risk_rows</span>   = <span class="nm">df</span>[<span class="nm">df</span>[<span class="st">"margin_pct"</span>] < <span class="nm">15</span>]
+<span class="nm">loss_months</span> = <span class="nm">df</span>[<span class="nm">df</span>[<span class="st">"profit"</span>] < <span class="nm">0</span>]
+<span class="nm">strong</span>      = <span class="nm">df</span>[(<span class="nm">df</span>[<span class="st">"margin_pct"</span>] > <span class="nm">30</span>) & (<span class="nm">df</span>[<span class="st">"revenue"</span>] > <span class="nm">50000</span>)]</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="nm">df</span>[<span class="nm">df</span>[<span class="st">"margin_pct"</span>] < <span class="nm">15</span>]</div><div class="lb-arrow">→</div><div class="lb-explain">The inner df["margin_pct"] < 15 creates a True/False column. The outer df[...] uses that to keep only True rows. Reads as: "give me the rows of df where margin_pct is less than 15."</div></div>
+  <div class="lb-item"><div class="lb-code">(<span class="nm">condition1</span>) & (<span class="nm">condition2</span>)</div><div class="lb-arrow">→</div><div class="lb-explain">Combine conditions with & (AND) or | (OR). <strong>Each condition must be in its own brackets</strong> — without brackets, Python misreads the order of operations and throws a TypeError.</div></div>
+</div>`,
+    exercise:{task:'Find the risk months and the growth months in your data.',steps:['Create risk_months = rows where margin_pct < 38','Create growth_months = rows where revenue > 47000','Print count of risk months and count of growth months','Paste both counts'],inputLabel:'Paste your two count lines:',placeholder:'Risk months: 2\nGrowth months: 1',
+    grader:(v)=>{if(v.includes('2')&&v.includes('1')) return {pass:true,msg:'Correct filtering. The Alert Engine uses this exact pattern to segment data into risk categories before sending them to Claude for AI analysis.'};return {partial:true,msg:'Check your thresholds against the test data. Adjust if your CSV has different values — the key is the filtering pattern works, not the exact counts.'}}},
+    errors:[{err:"TypeError: Cannot perform 'rand_' with a dtyped [float64] array and scalar of type [bool]",why:"Multiple conditions in a filter need parentheses around each one.",fix:'Wrap each condition: df[(df["a"] > 5) & (df["b"] < 10)] — brackets around each condition are mandatory.'}]
+  },
+  {
+    id:'pdgroup',name:'Groupby & Aggregation',icon:'📁',xp:110,time:'20 min',deps:['pdfilter'],
+    blurb:'Break down performance by category, product, or department.',
+    learn:`<div class="lesson-section"><div class="ls-label">What groupby does</div><div class="ls-body">groupby() splits a DataFrame into groups based on a column's values, then runs calculations on each group independently. Add a "category" column to your data (food, drinks, events) and groupby("category") gives you total revenue, average profit, and count for each category separately. <strong>This is the product performance breakdown in the Market & Customer Engine.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">summary</span> = <span class="nm">df</span>.<span class="fn">groupby</span>(<span class="st">"category"</span>).<span class="fn">agg</span>({
+    <span class="st">"revenue"</span>:   <span class="st">"sum"</span>,
+    <span class="st">"profit"</span>:    <span class="st">"sum"</span>,
+    <span class="st">"margin_pct"</span>:<span class="st">"mean"</span>
+}).<span class="fn">reset_index</span>()
+
+<span class="nm">summary</span> = <span class="nm">summary</span>.<span class="fn">sort_values</span>(<span class="st">"profit"</span>, <span class="nm">ascending</span>=<span class="kw">False</span>)
+<span class="fn">print</span>(<span class="nm">summary</span>)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code">.<span class="fn">agg</span>({<span class="st">"revenue"</span>:<span class="st">"sum"</span>})</div><div class="lb-arrow">→</div><div class="lb-explain"><strong>agg()</strong> (aggregate) lets you specify a different calculation for each column. "sum" totals it. "mean" averages it. "count" counts rows. "max"/"min" for extremes.</div></div>
+  <div class="lb-item"><div class="lb-code">.<span class="fn">reset_index</span>()</div><div class="lb-arrow">→</div><div class="lb-explain">After groupby, the group column becomes the index. reset_index() moves it back to a regular column. Without this, the DataFrame looks odd and some operations fail.</div></div>
+  <div class="lb-item"><div class="lb-code">.<span class="fn">sort_values</span>(<span class="st">"profit"</span>, <span class="nm">ascending</span>=<span class="kw">False</span>)</div><div class="lb-arrow">→</div><div class="lb-explain">Sort by profit from highest to lowest. ascending=False means descending order. This is how the "top performing categories" list is generated.</div></div>
+</div>`,
+    exercise:{task:'Add a category column and analyse by group.',steps:['Add to your CSV: a "category" column with values like food, drinks, services','Reload and groupby category','Show sum of revenue and mean of margin_pct per category','Sort by revenue descending','Paste the result table'],inputLabel:'Paste your grouped output:',placeholder:'category  revenue  margin_pct\nfood      90000      36.2\ndrinks    48000      38.1',
+    grader:(v)=>{if(v.includes('category')||v.includes('revenue')) return {pass:true,msg:'groupby working. This breakdown — revenue and margin by category — is the exact output of the Product Intelligence section in AI-BOS.'};return {fail:true,msg:'Make sure your CSV has a category column. Then: df.groupby("category").agg({"revenue":"sum","margin_pct":"mean"}).reset_index()'}}},
+    errors:[{err:"DataFrameGroupBy object at 0x...",why:"You called groupby() but forgot to add .agg() or another aggregation function after it.",fix:'Always chain groupby with an aggregation: df.groupby("col").agg({...}).reset_index()'}]
+  },
+  ]
+},
+{
+  id:'s3',name:'Financial Engine',color:'#f59e0b',time:'Days 7–9',
+  skills:[
+  {
+    id:'fepnl',name:'P&L Calculator',icon:'💰',xp:150,time:'28 min',deps:['pdgroup'],
+    blurb:'The core of the AI CFO — full profit & loss in one function.',
+    learn:`<div class="lesson-section"><div class="ls-label">What a P&L function does</div><div class="ls-body">The P&L function takes a loaded DataFrame and returns a complete financial summary dict. It becomes the first function called on every business dataset. Its output feeds both the dashboard display and the Claude AI prompt. <strong>Everything else in the Financial Engine depends on this function's output.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">analyse_pnl</span>(<span class="nm">df</span>):
+    <span class="nm">total_rev</span>  = <span class="nm">df</span>[<span class="st">"revenue"</span>].<span class="fn">sum</span>()
+    <span class="nm">total_cost</span> = <span class="nm">df</span>[<span class="st">"costs"</span>].<span class="fn">sum</span>()
+    <span class="nm">total_profit</span> = <span class="nm">total_rev</span> - <span class="nm">total_cost</span>
+    <span class="nm">avg_margin</span> = <span class="fn">round</span>(<span class="nm">df</span>[<span class="st">"margin_pct"</span>].<span class="fn">mean</span>(), <span class="nm">1</span>)
+    <span class="nm">best_idx</span>   = <span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">idxmax</span>()
+    <span class="kw">return</span> {
+        <span class="st">"total_revenue"</span>: <span class="nm">total_rev</span>,
+        <span class="st">"total_costs"</span>:   <span class="nm">total_cost</span>,
+        <span class="st">"total_profit"</span>:  <span class="nm">total_profit</span>,
+        <span class="st">"avg_margin"</span>:    <span class="nm">avg_margin</span>,
+        <span class="st">"best_month"</span>:    <span class="nm">df</span>.<span class="fn">loc</span>[<span class="nm">best_idx</span>, <span class="st">"month"</span>],
+        <span class="st">"worst_month"</span>:   <span class="nm">df</span>.<span class="fn">loc</span>[<span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">idxmin</span>(), <span class="st">"month"</span>]
+    }</pre></div>`,
+    exercise:{task:'Write and test analyse_pnl() on your test data.',steps:['Write the full analyse_pnl(df) function','Load your CSV and call: result = analyse_pnl(df)','Print each key-value pair from result using a for loop','Paste the output'],inputLabel:'Paste your key-value output:',placeholder:'total_revenue → 138000\ntotal_costs → 88000\ntotal_profit → 50000\navg_margin → 36.2\nbest_month → Mar\nworst_month → Feb',
+    grader:(v)=>{if(v.includes('total_revenue')||v.includes('profit')) return {pass:true,msg:'analyse_pnl() is working. This function is the heart of Engine 1. When you later call it from Streamlit on a user-uploaded file, it will generate this dict in milliseconds and feed it straight into the Claude API prompt.'};return {fail:true,msg:'Make sure the function returns a dict. Call it with result = analyse_pnl(df), then for k,v in result.items(): print(k, "→", v)'}}},
+    errors:[{err:"KeyError inside analyse_pnl",why:"Your CSV column names do not match what the function expects.",fix:'Print df.columns.tolist() before calling the function and make sure the names match exactly: "revenue", "costs", "margin_pct", "profit", "month".'}]
+  },
+  {
+    id:'fecash',name:'Cash Flow Forecasting',icon:'📈',xp:150,time:'32 min',deps:['fepnl'],
+    blurb:'Predict the next 90 days of cash — the killer feature.',
+    learn:`<div class="lesson-section"><div class="ls-label">Why this is the most valuable feature</div><div class="ls-body">Cash flow forecasting is the #1 thing business owners ask for and rarely have. Most businesses discover a cash problem when it hits — not before. A 30/60/90-day forecast gives them time to act. <strong>This single feature justifies the monthly subscription for most customers.</strong><br><br>The approach: use the average of the last 3 months as the projected monthly net cash change. Apply it forward. Flag if projected cash goes negative.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">forecast_cashflow</span>(<span class="nm">df</span>, <span class="nm">current_cash</span>=<span class="nm">0</span>, <span class="nm">months_ahead</span>=<span class="nm">3</span>):
+    <span class="nm">recent_profit</span> = <span class="nm">df</span>.<span class="fn">tail</span>(<span class="nm">3</span>)[<span class="st">"profit"</span>].<span class="fn">mean</span>()
+    <span class="nm">running_cash</span>  = <span class="nm">df</span>[<span class="st">"profit"</span>].<span class="fn">sum</span>() + <span class="nm">current_cash</span>
+    <span class="nm">forecast</span> = []
+    <span class="kw">for</span> <span class="nm">m</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">1</span>, <span class="nm">months_ahead</span> + <span class="nm">1</span>):
+        <span class="nm">running_cash</span> += <span class="nm">recent_profit</span>
+        <span class="nm">alert</span> = <span class="st">"⚠ NEGATIVE"</span> <span class="kw">if</span> <span class="nm">running_cash</span> < <span class="nm">0</span> <span class="kw">else</span> <span class="st">"✓ Positive"</span>
+        <span class="nm">forecast</span>.<span class="fn">append</span>({
+            <span class="st">"month_ahead"</span>: <span class="nm">m</span>,
+            <span class="st">"projected_cash"</span>: <span class="fn">round</span>(<span class="nm">running_cash</span>),
+            <span class="st">"status"</span>: <span class="nm">alert</span>
+        })
+    <span class="kw">return</span> <span class="nm">forecast</span></pre></div>`,
+    exercise:{task:'Run a 3-month cash flow forecast.',steps:['Write forecast_cashflow(df, current_cash=50000, months_ahead=3)','Call it with your test data','Print each forecast month: month number, projected cash, status','Paste the 3 forecast lines'],inputLabel:'Paste your 3 forecast lines:',placeholder:'Month 1: K66,333 ✓ Positive\nMonth 2: K82,666 ✓ Positive\nMonth 3: K98,999 ✓ Positive',
+    grader:(v)=>{if(v.includes('Month')&&v.includes('K')&&(v.includes('Positive')||v.includes('NEGATIVE'))) return {pass:true,msg:'Cash flow forecast running. This is displayed as a line chart on the AI-BOS dashboard. The "status" field drives the colour of the chart line — green for positive, red for negative.'};return {fail:true,msg:'Make sure the function returns a list of dicts. Call it, then loop: for item in forecast: print(f"Month {item[\'month_ahead\']}: K{item[\'projected_cash\']:,} {item[\'status\']}")'}}},
+    errors:[]
+  },
+  {
+    id:'fevar',name:'Variance Detection',icon:'🚨',xp:130,time:'26 min',deps:['fecash'],
+    blurb:'Automatically flag the months where something went wrong.',
+    learn:`<div class="lesson-section"><div class="ls-label">The alert engine core</div><div class="ls-body">Variance detection compares each month to the previous month. If the change exceeds a threshold (e.g. revenue dropped more than 15%), it flags that month as an alert. These alerts become the "⚠ Alerts" section of the dashboard and are sent to Claude for AI explanation.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">detect_variances</span>(<span class="nm">df</span>, <span class="nm">threshold</span>=<span class="nm">0.15</span>):
+    <span class="nm">alerts</span> = []
+    <span class="kw">for</span> <span class="nm">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">1</span>, <span class="fn">len</span>(<span class="nm">df</span>)):
+        <span class="nm">prev_rev</span> = <span class="nm">df</span>.iloc[<span class="nm">i</span>-<span class="nm">1</span>][<span class="st">"revenue"</span>]
+        <span class="nm">curr_rev</span> = <span class="nm">df</span>.iloc[<span class="nm">i</span>][<span class="st">"revenue"</span>]
+        <span class="nm">pct_chg</span>  = ((<span class="nm">curr_rev</span> - <span class="nm">prev_rev</span>) / <span class="nm">prev_rev</span>) * <span class="nm">100</span>
+        <span class="kw">if</span> <span class="fn">abs</span>(<span class="nm">pct_chg</span>) > <span class="nm">threshold</span> * <span class="nm">100</span>:
+            <span class="nm">alerts</span>.<span class="fn">append</span>({
+                <span class="st">"month"</span>: <span class="nm">df</span>.iloc[<span class="nm">i</span>][<span class="st">"month"</span>],
+                <span class="st">"change_pct"</span>: <span class="fn">round</span>(<span class="nm">pct_chg</span>, <span class="nm">1</span>),
+                <span class="st">"direction"</span>: <span class="st">"drop"</span> <span class="kw">if</span> <span class="nm">pct_chg</span> < <span class="nm">0</span> <span class="kw">else</span> <span class="st">"spike"</span>
+            })
+    <span class="kw">return</span> <span class="nm">alerts</span></pre></div>`,
+    exercise:{task:'Run variance detection and print alerts.',steps:['Write detect_variances(df, threshold=0.10)','Call it on your data','Print each alert: month, direction, change_pct','Paste output'],inputLabel:'Paste your alert output:',placeholder:'Feb: drop of -6.7%\nor\nNo variances detected above threshold',
+    grader:(v)=>{if(v.includes('drop')||v.includes('spike')||v.includes('detected')) return {pass:true,msg:'Variance detection working. Each alert in this list is passed to Claude with the question: "Why might this have happened and what should the owner do?" — that is the AI layer on top.'};return {fail:true,msg:'Call the function and loop through results: for a in alerts: print(f\"{a[\'month\']}: {a[\'direction\']} of {a[\'change_pct\']}%\")'}}},
+    errors:[]
+  },
+  {
+    id:'fehealth',name:'Business Health Score',icon:'🏥',xp:120,time:'20 min',deps:['fevar'],
+    blurb:'One number that tells the whole financial story.',
+    learn:`<div class="lesson-section"><div class="ls-label">Why a single score matters</div><div class="ls-body">Business owners are not data analysts. Showing them 20 metrics at once creates paralysis. A single 0–100 health score — displayed prominently at the top of the dashboard — gives instant orientation. <strong>Everything else on the dashboard is the detail behind that one number.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">health_score</span>(<span class="nm">pnl</span>, <span class="nm">alerts</span>):
+    <span class="nm">margin_pts</span> = <span class="fn">min</span>(<span class="nm">pnl</span>[<span class="st">"avg_margin"</span>] * <span class="nm">1.5</span>, <span class="nm">50</span>)
+    <span class="nm">trend</span>      = <span class="nm">pnl</span>[<span class="st">"total_revenue"</span>] - <span class="nm">pnl</span>[<span class="st">"total_costs"</span>]
+    <span class="nm">trend_pts</span>  = <span class="nm">30</span> <span class="kw">if</span> <span class="nm">trend</span> > <span class="nm">0</span> <span class="kw">else</span> <span class="nm">10</span>
+    <span class="nm">alert_pen</span>  = <span class="fn">len</span>(<span class="nm">alerts</span>) * <span class="nm">8</span>
+    <span class="nm">score</span>      = <span class="fn">max</span>(<span class="nm">0</span>, <span class="fn">min</span>(<span class="nm">100</span>, <span class="nm">margin_pts</span> + <span class="nm">trend_pts</span> - <span class="nm">alert_pen</span>))
+    <span class="nm">label</span>      = (<span class="st">"Critical"</span> <span class="kw">if</span> <span class="nm">score</span>&lt;<span class="nm">30</span> <span class="kw">else</span>
+                  <span class="st">"At Risk"</span>  <span class="kw">if</span> <span class="nm">score</span>&lt;<span class="nm">55</span> <span class="kw">else</span>
+                  <span class="st">"Healthy"</span>  <span class="kw">if</span> <span class="nm">score</span>&lt;<span class="nm">80</span> <span class="kw">else</span> <span class="st">"Excellent"</span>)
+    <span class="kw">return</span> <span class="fn">round</span>(<span class="nm">score</span>), <span class="nm">label</span></pre></div>`,
+    exercise:{task:'Generate a health score for your test data.',steps:['Call analyse_pnl(df) to get pnl dict','Call detect_variances(df) to get alerts list','Call health_score(pnl, alerts) to get score and label','Print: "Business health: 74/100 — Healthy"','Paste your output'],inputLabel:'Paste your health score output line:',placeholder:'Business health: 74/100 — Healthy',
+    grader:(v)=>{if(/\d+\/100/.test(v)||v.includes('health')) return {pass:true,msg:'Health score generated. You have now built the complete Financial Intelligence Engine core — P&L, cash flow forecast, variance detection, and health score. Four functions, four outputs. These feed directly into the Streamlit dashboard in Stage 5.'};return {fail:true,msg:'Print format: print(f"Business health: {score}/100 — {label}")'}}},
+    errors:[]
+  },
+  ]
+},
+{
+  id:'s4',name:'Claude API',color:'#10b981',time:'Days 10–12',
+  skills:[
+  {
+    id:'apikey',name:'Claude API Key Setup',icon:'🔑',xp:60,time:'10 min',deps:['fehealth'],
+    blurb:'Get authenticated to talk to Claude from your code.',
+    learn:`<div class="lesson-section"><div class="ls-label">What an API key is</div><div class="ls-body">An API key is a password that proves to Anthropic's servers that you are authorised to use Claude programmatically. Without it, your API calls are rejected. <strong>Never put your API key directly in your code file</strong> — if you share the file or push it to GitHub, anyone can use your key and you pay for their usage.</div></div>
+<div class="tip-box"><div class="tb-label">✓ SAFE KEY STORAGE</div><p>Store keys as environment variables. In VS Code terminal: <strong>export ANTHROPIC_API_KEY="sk-ant-..."</strong> (Mac/Linux) or <strong>$env:ANTHROPIC_API_KEY="sk-ant-..."</strong> (Windows). Your code then reads it with os.environ.get() — the key never appears in your source code.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">import</span> <span class="nm">os</span>
+<span class="kw">import</span> <span class="nm">anthropic</span>
+
+<span class="nm">client</span> = <span class="nm">anthropic</span>.<span class="fn">Anthropic</span>(
+    <span class="nm">api_key</span>=<span class="nm">os</span>.environ.<span class="fn">get</span>(<span class="st">"ANTHROPIC_API_KEY"</span>)
+)
+<span class="fn">print</span>(<span class="st">"Client ready:"</span>, <span class="nm">client</span> <span class="kw">is not None</span>)</pre></div>`,
+    exercise:{task:'Set up your API key and verify the client initialises.',steps:['Go to console.anthropic.com and create an API key','Set the environment variable in your terminal','Run the code above','Print "Client ready: True"','Paste your output'],inputLabel:'Paste your output:',placeholder:'Client ready: True',
+    grader:(v)=>{if(v.includes('True')) return {pass:true,msg:'Client initialised. Every Claude API call in AI-BOS goes through this client object.'};return {fail:true,msg:'If you get AuthenticationError, the API key was not set correctly. Check the environment variable name matches exactly: ANTHROPIC_API_KEY'}}},
+    errors:[{err:"AuthenticationError",why:"The API key is wrong, expired, or was not set in the environment.",fix:'Double-check the key value in console.anthropic.com. Re-run the export command in the SAME terminal window you use to run Python. Environment variables only apply to the terminal session they were set in.'}]
+  },
+  {
+    id:'apicall',name:'First API Call',icon:'📡',xp:140,time:'22 min',deps:['apikey'],
+    blurb:'Connect your calculations to AI intelligence.',
+    learn:`<div class="lesson-section"><div class="ls-label">How the API call works</div><div class="ls-body">You send Claude a message. Claude returns a response. The messages parameter is a list of dicts — each dict has a "role" (user or assistant) and "content" (the text). For a single question, you send one message with role "user". Claude responds with an assistant message.<br><br><strong>The model string matters.</strong> Different models have different costs and capabilities. Use claude-sonnet-4-20250514 for AI-BOS — it is the best balance of intelligence and cost for financial analysis.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">response</span> = <span class="nm">client</span>.messages.<span class="fn">create</span>(
+    <span class="nm">model</span>=<span class="st">"claude-sonnet-4-20250514"</span>,
+    <span class="nm">max_tokens</span>=<span class="nm">1024</span>,
+    <span class="nm">messages</span>=[{
+        <span class="st">"role"</span>:    <span class="st">"user"</span>,
+        <span class="st">"content"</span>: <span class="st">"Say: AI-BOS Financial Engine connected."</span>
+    }]
+)
+<span class="fn">print</span>(<span class="nm">response</span>.content[<span class="nm">0</span>].text)</pre></div>
+<div class="line-breakdown">
+  <div class="lb-item"><div class="lb-code"><span class="nm">max_tokens</span>=<span class="nm">1024</span></div><div class="lb-arrow">→</div><div class="lb-explain">Controls the maximum length of Claude's response. 1 token ≈ 0.75 words. 1024 tokens ≈ 750 words — plenty for a financial analysis. Set higher for longer reports. You are charged per token.</div></div>
+  <div class="lb-item"><div class="lb-code"><span class="nm">response</span>.content[<span class="nm">0</span>].text</div><div class="lb-arrow">→</div><div class="lb-explain">The response has a content list. Element [0] is the first (and usually only) response block. .text extracts the actual text string. This is the AI's answer — ready to display or process.</div></div>
+</div>`,
+    exercise:{task:'Make your first successful API call.',steps:['Write the API call with the test prompt: "List 3 things a restaurant owner should monitor monthly. Be brief."','Print the response text','Paste Claude\'s response'],inputLabel:'Paste Claude\'s response:',placeholder:'1. Food costs...\n2. Staff hours...\n3. Table turnover...',
+    grader:(v)=>{if(v.trim().length>50) return {pass:true,msg:'API connection confirmed. Claude responded with '+v.trim().split(/\s+/).length+' words. The AI intelligence layer is live. From here, you will inject your P&L data into these prompts to get real financial analysis.'};return {fail:true,msg:'The response should be several lines of text. If you see an error, check: (1) API key is set, (2) model name is correct, (3) messages format has role and content keys.'}}},
+    errors:[{err:"APIConnectionError",why:"Cannot reach Anthropic's servers — usually a network issue.",fix:'Check internet connection. Try: curl https://api.anthropic.com in terminal. If that fails, the issue is network-level.'},{err:"RateLimitError",why:"You have exceeded the allowed number of requests per minute.",fix:'Wait 60 seconds and try again. For production, add time.sleep(1) between calls.'}]
+  },
+  {
+    id:'prompt',name:'Prompt Engineering',icon:'✍️',xp:150,time:'30 min',deps:['apicall'],
+    blurb:'Write prompts that turn financial data into expert insight.',
+    learn:`<div class="lesson-section"><div class="ls-label">What makes a good AI-BOS prompt</div><div class="ls-body">A weak prompt: "Analyse my business." A strong prompt gives Claude: (1) a role to play, (2) structured context data, (3) a specific output format, (4) constraints on tone and length.<br><br><strong>The quality of your prompts is the quality of your product.</strong> A well-engineered prompt template is a core AI-BOS asset — it is what differentiates your financial insight from a generic AI chat response.</div></div>
+<div class="tip-box"><div class="tb-label">✓ THE SYSTEM + USER STRUCTURE</div><p>Use a <strong>system</strong> message to define Claude's role and general behaviour (this persists across the conversation). Use the <strong>user</strong> message for the specific data and question. The system message is set once; only the user message changes with each business's data.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">def</span> <span class="fn">get_ai_analysis</span>(<span class="nm">pnl</span>, <span class="nm">alerts</span>, <span class="nm">score</span>):
+    <span class="nm">prompt</span> = <span class="st">f"""
+Business financial data:
+- Annual revenue: K{pnl['total_revenue']:,}
+- Annual profit: K{pnl['total_profit']:,}
+- Average margin: {pnl['avg_margin']}%
+- Health score: {score}/100
+- Alert count: {len(alerts)}
+- Best month: {pnl['best_month']}
+- Worst month: {pnl['worst_month']}
+
+Provide exactly 3 specific, actionable recommendations.
+Each must reference the data above. No generic advice.
+Use plain English. Maximum 2 sentences per recommendation.
+"""</span>
+    <span class="nm">r</span> = <span class="nm">client</span>.messages.<span class="fn">create</span>(
+        <span class="nm">model</span>=<span class="st">"claude-sonnet-4-20250514"</span>,
+        <span class="nm">max_tokens</span>=<span class="nm">800</span>,
+        <span class="nm">system</span>=<span class="st">"You are an expert CFO advising African SMEs. Be direct, specific, and practical."</span>,
+        <span class="nm">messages</span>=[{<span class="st">"role"</span>:<span class="st">"user"</span>,<span class="st">"content"</span>:<span class="nm">prompt</span>}]
+    )
+    <span class="kw">return</span> <span class="nm">r</span>.content[<span class="nm">0</span>].text</pre></div>`,
+    exercise:{task:'Write and test the full get_ai_analysis() function.',steps:['Write the function using your test pnl dict and alerts list','Call it and print the response','Verify: does it mention specific numbers from your data?','Paste the AI response'],inputLabel:'Paste Claude\'s 3 recommendations:',placeholder:'1. Your K[amount] revenue suggests...\n2. The [month] drop indicates...\n3. With a [margin]% margin...',
+    grader:(v)=>{if(v.trim().length>100&&(v.includes('1.')||v.includes('1)')||v.match(/revenue|profit|margin|cost/i))) return {pass:true,msg:'The AI analysis is referencing your actual financial data — not generic advice. This is the core of what makes AI-BOS valuable: personalised, data-driven intelligence for each specific business.'};if(v.trim().length>50) return {partial:true,msg:'Response received. Check that the recommendations mention specific numbers from your pnl dict. If they are generic, tighten your prompt to say "you MUST cite the actual figures provided."'};return {fail:true,msg:'Call get_ai_analysis(pnl, alerts, score) after creating those three objects. The function should return a string — assign it to result and print(result).'}}},
+    errors:[{err:"Response is generic and ignores the data",why:"The prompt is not specific enough about requiring data references, or the data was not embedded correctly in the f-string.",fix:'Add explicit instruction: "Every recommendation must cite specific numbers from the data above. Generic advice will be rejected." Also verify your f-string is embedding the actual values by printing the prompt variable before sending it.'}]
+  },
+  {
+    id:'apijson',name:'Structured JSON Output',icon:'🗃️',xp:130,time:'25 min',deps:['prompt'],
+    blurb:'Get structured data back from Claude — not a wall of text.',
+    learn:`<div class="lesson-section"><div class="ls-label">Why structured output matters</div><div class="ls-body">If Claude returns plain text, you can display it but you cannot interact with it programmatically. If it returns JSON, each recommendation becomes a card on the dashboard, each field becomes a UI element, and you can sort/filter/prioritise.<br><br><strong>Structured output is the difference between displaying AI text and building an AI product.</strong></div></div>
+<div class="warn-box"><div class="wb-label">⚠ ALWAYS ADD json.loads() SAFETY</div><p>Claude usually returns valid JSON but occasionally adds a sentence before or after the JSON block. Wrap your json.loads() in a try/except block. If it fails, fall back to displaying the raw text.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">import</span> <span class="nm">json</span>
+
+<span class="nm">prompt</span> = <span class="st">"""
+Return ONLY a valid JSON array. No other text whatsoever.
+Format: [{"title":"...","action":"...","priority":"high/medium/low"}]
+Based on: margin 12%, revenue dropped 20% last month, costs rising.
+"""</span>
+
+<span class="nm">r</span> = <span class="nm">client</span>.messages.<span class="fn">create</span>(<span class="nm">model</span>=<span class="st">"claude-sonnet-4-20250514"</span>,
+    <span class="nm">max_tokens</span>=<span class="nm">600</span>, <span class="nm">messages</span>=[{<span class="st">"role"</span>:<span class="st">"user"</span>,<span class="st">"content"</span>:<span class="nm">prompt</span>}])
+
+<span class="kw">try</span>:
+    <span class="nm">recs</span> = <span class="nm">json</span>.<span class="fn">loads</span>(<span class="nm">r</span>.content[<span class="nm">0</span>].text)
+    <span class="kw">for</span> <span class="nm">rec</span> <span class="kw">in</span> <span class="nm">recs</span>:
+        <span class="fn">print</span>(<span class="st">f"[{rec['priority'].upper()}] {rec['title']}"</span>)
+<span class="kw">except</span>:
+    <span class="fn">print</span>(<span class="nm">r</span>.content[<span class="nm">0</span>].text)</pre></div>`,
+    exercise:{task:'Get structured recommendations from Claude.',steps:['Write the JSON prompt above','Parse the response with json.loads()','Print each recommendation as: [PRIORITY] Title','Paste your output'],inputLabel:'Paste your structured output lines:',placeholder:'[HIGH] Reduce variable costs immediately\n[HIGH] Address revenue decline in core segment\n[MEDIUM] Review pricing strategy',
+    grader:(v)=>{if((v.includes('[HIGH]')||v.includes('[MEDIUM]')||v.includes('[LOW]'))&&v.split('\n').filter(l=>l.trim()).length>=2) return {pass:true,msg:'Structured JSON output working. Each of these recommendations becomes a card in the Streamlit dashboard with colour-coded priority badges. You have completed the Claude API stage — the intelligence layer is fully wired.'};if(v.includes('{')) return {partial:true,msg:'Looks like raw JSON — add the for loop to extract and print each recommendation.'};return {fail:true,msg:'Claude may have added text before the JSON. Try adding to the prompt: "Start your response with [ and end with ]. No other characters."'}}},
+    errors:[{err:"json.JSONDecodeError",why:"Claude returned text that is not valid JSON — maybe added an explanation before the JSON block.",fix:'Add to your prompt: "Output must begin with [ and contain nothing else." Also wrap in try/except so the raw text is shown as fallback.'}]
+  },
+  ]
+},
+{
+  id:'s5',name:'Streamlit Dashboard',color:'#f43f5e',time:'Days 13–16',
+  skills:[
+  {
+    id:'stbasic',name:'Streamlit Basics',icon:'🖥️',xp:100,time:'18 min',deps:['apijson'],
+    blurb:'Build a web interface in Python — no HTML, no JavaScript.',
+    learn:`<div class="lesson-section"><div class="ls-label">What Streamlit does</div><div class="ls-body">Streamlit converts Python scripts into interactive web apps. Every time you run <strong>streamlit run aibos.py</strong>, it opens a browser tab with your app. Every Python variable you display with st. functions appears as a UI element. <strong>It is the fastest path from Python code to a live product.</strong><br><br>The app re-runs from top to bottom every time a user interacts with it. This is different from most web frameworks — you do not handle events explicitly, you just write top-to-bottom Python and Streamlit handles the re-running.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">import</span> <span class="nm">streamlit</span> <span class="kw">as</span> <span class="nm">st</span>
+
+<span class="nm">st</span>.<span class="fn">title</span>(<span class="st">"AI-BOS Financial Engine"</span>)
+<span class="nm">st</span>.<span class="fn">write</span>(<span class="st">"Your AI-powered CFO"</span>)
+
+<span class="nm">col1</span>, <span class="nm">col2</span>, <span class="nm">col3</span> = <span class="nm">st</span>.<span class="fn">columns</span>(<span class="nm">3</span>)
+<span class="nm">col1</span>.<span class="fn">metric</span>(<span class="st">"Revenue"</span>, <span class="st">"K45,000"</span>, <span class="st">"+8%"</span>)
+<span class="nm">col2</span>.<span class="fn">metric</span>(<span class="st">"Profit"</span>,  <span class="st">"K17,000"</span>, <span class="st">"+12%"</span>)
+<span class="nm">col3</span>.<span class="fn">metric</span>(<span class="st">"Health"</span>,  <span class="st">"82/100"</span>,  <span class="st">"Healthy"</span>)
+
+<span class="cm"># Run: streamlit run aibos.py</span></pre></div>`,
+    exercise:{task:'Build the first screen of the AI-BOS dashboard.',steps:['Create a new file: dashboard.py','Write: st.title, a subtitle with st.write, and 3 metric cards in columns','Run: streamlit run dashboard.py','A browser tab will open automatically','Paste what the three metric labels show'],inputLabel:'Paste your three metric labels:',placeholder:'Revenue\nProfit\nHealth',
+    grader:(v)=>{const t=v.toLowerCase();if(t.includes('revenue')||t.includes('profit')) return {pass:true,msg:'Streamlit dashboard is live. You just built a web app in 8 lines of Python. The browser tab you see IS the AI-BOS dashboard — add your Engine functions to it and it becomes the real product.'};return {fail:true,msg:'Run: streamlit run dashboard.py in the terminal. A browser tab should open at localhost:8501. If it does not, check the terminal for error messages.'}}},
+    errors:[{err:"streamlit: command not found",why:"Streamlit was installed to a different Python environment.",fix:'Try: python -m streamlit run dashboard.py — this runs Streamlit through Python directly.'},{err:"Browser does not open",why:"The server is running but the browser did not auto-open.",fix:'Manually go to http://localhost:8501 in your browser.'}]
+  },
+  {
+    id:'stupload',name:'File Upload',icon:'📤',xp:120,time:'18 min',deps:['stbasic'],
+    blurb:'Let businesses drag and drop their spreadsheet into AI-BOS.',
+    learn:`<div class="lesson-section"><div class="ls-label">The session_state pattern</div><div class="ls-body">Streamlit re-runs your entire script on every interaction. If you load a file, process it, and the user clicks a button — Streamlit re-runs from the top, the file is gone. <strong>st.session_state</strong> is a persistent dict that survives re-runs. Store your loaded DataFrame there so it persists between interactions.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">uploaded</span> = <span class="nm">st</span>.<span class="fn">file_uploader</span>(
+    <span class="st">"Upload your business data"</span>,
+    <span class="nm">type</span>=[<span class="st">"csv"</span>, <span class="st">"xlsx"</span>]
+)
+<span class="kw">if</span> <span class="nm">uploaded</span>:
+    <span class="kw">if</span> <span class="nm">uploaded</span>.name.<span class="fn">endswith</span>(<span class="st">".xlsx"</span>):
+        <span class="nm">df</span> = <span class="nm">pd</span>.<span class="fn">read_excel</span>(<span class="nm">uploaded</span>)
+    <span class="kw">else</span>:
+        <span class="nm">df</span> = <span class="nm">pd</span>.<span class="fn">read_csv</span>(<span class="nm">uploaded</span>)
+    <span class="nm">st</span>.session_state[<span class="st">"df"</span>] = <span class="nm">df</span>
+    <span class="nm">st</span>.<span class="fn">success</span>(<span class="st">f"Loaded {len(df)} rows"</span>)</pre></div>`,
+    exercise:{task:'Add file upload to your dashboard.',steps:['Add the file uploader to dashboard.py','Upload your test_data.csv','Verify the success message appears showing row count','Paste the success message text'],inputLabel:'Paste the success message:',placeholder:'Loaded 3 rows',
+    grader:(v)=>{if(v.includes('row')||v.includes('Loaded')) return {pass:true,msg:'File upload working. Business owners will drag their Excel or CSV files here. The uploaded object behaves like a file — pass it directly to pd.read_csv() or pd.read_excel().'};return {fail:true,msg:'Upload your test_data.csv using the file uploader widget. The success message should appear below it.'}}},
+    errors:[]
+  },
+  {
+    id:'stcharts',name:'Charts & Visualisation',icon:'📉',xp:130,time:'22 min',deps:['stupload'],
+    blurb:'Turn financial data into visual intelligence.',
+    learn:`<div class="lesson-section"><div class="ls-label">Plotly in Streamlit</div><div class="ls-body">Streamlit works with Plotly charts natively via st.plotly_chart(). Plotly Express (px) lets you create charts with one line: px.line(df, x="month", y="revenue"). The chart is interactive — users can hover, zoom, and download the chart image.</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">import</span> <span class="nm">plotly.express</span> <span class="kw">as</span> <span class="nm">px</span>
+
+<span class="nm">fig</span> = <span class="nm">px</span>.<span class="fn">line</span>(<span class="nm">df</span>, <span class="nm">x</span>=<span class="st">"month"</span>, <span class="nm">y</span>=<span class="st">"revenue"</span>,
+             <span class="nm">title</span>=<span class="st">"Revenue Trend"</span>,
+             <span class="nm">labels</span>={<span class="st">"revenue"</span>:<span class="st">"Revenue (K)"</span>})
+<span class="nm">st</span>.<span class="fn">plotly_chart</span>(<span class="nm">fig</span>, <span class="nm">use_container_width</span>=<span class="kw">True</span>)
+
+<span class="nm">fig2</span> = <span class="nm">px</span>.<span class="fn">bar</span>(<span class="nm">df</span>, <span class="nm">x</span>=<span class="st">"month"</span>, <span class="nm">y</span>=<span class="st">"profit"</span>,
+              <span class="nm">color</span>=<span class="st">"profit"</span>, <span class="nm">title</span>=<span class="st">"Monthly Profit"</span>)
+<span class="nm">st</span>.<span class="fn">plotly_chart</span>(<span class="nm">fig2</span>, <span class="nm">use_container_width</span>=<span class="kw">True</span>)</pre></div>`,
+    exercise:{task:'Add two charts to your dashboard.',steps:['After file upload, add a revenue line chart and a profit bar chart','Display them with use_container_width=True','Describe what you see (chart type and what the X and Y axes show)'],inputLabel:'Describe your two charts:',placeholder:'Chart 1: line chart, months on X, revenue on Y. Chart 2: bar chart, months on X, profit on Y with colour.',
+    grader:(v)=>{if(v.toLowerCase().includes('line')||v.toLowerCase().includes('bar')||v.toLowerCase().includes('chart')) return {pass:true,msg:'Charts displaying. These two charts are the main visual content of the AI-BOS dashboard. Add them inside the if st.session_state.get("df") is not None: block so they only appear after a file is uploaded.'};return {fail:true,msg:'Describe what you see in the browser — type of chart, what the axes show, whether the data from your CSV appears correctly.'}}},
+    errors:[]
+  },
+  {
+    id:'stlayout',name:'Layout & Metrics Row',icon:'🗃️',xp:100,time:'18 min',deps:['stcharts'],
+    blurb:'Structure the dashboard so it looks like a real product.',
+    learn:`<div class="lesson-section"><div class="ls-label">The metric cards row</div><div class="ls-body">The top of every AI-BOS dashboard shows 4 metric cards: Revenue, Profit, Margin, Health Score. These are the "at a glance" numbers. Everything below is the detail. st.metric() creates these cards automatically with a main value and a delta (change indicator).</div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">if</span> <span class="st">"df"</span> <span class="kw">in</span> <span class="nm">st</span>.session_state:
+    <span class="nm">df</span>  = <span class="nm">st</span>.session_state[<span class="st">"df"</span>]
+    <span class="nm">pnl</span> = <span class="fn">analyse_pnl</span>(<span class="nm">df</span>)
+    <span class="nm">alts</span>= <span class="fn">detect_variances</span>(<span class="nm">df</span>)
+    <span class="nm">sc</span>, <span class="nm">lb</span> = <span class="fn">health_score</span>(<span class="nm">pnl</span>, <span class="nm">alts</span>)
+
+    <span class="nm">c1</span>,<span class="nm">c2</span>,<span class="nm">c3</span>,<span class="nm">c4</span> = <span class="nm">st</span>.<span class="fn">columns</span>(<span class="nm">4</span>)
+    <span class="nm">c1</span>.<span class="fn">metric</span>(<span class="st">"Revenue"</span>, <span class="st">f"K{pnl['total_revenue']:,}"</span>)
+    <span class="nm">c2</span>.<span class="fn">metric</span>(<span class="st">"Profit"</span>,  <span class="st">f"K{pnl['total_profit']:,}"</span>)
+    <span class="nm">c3</span>.<span class="fn">metric</span>(<span class="st">"Margin"</span>,  <span class="st">f"{pnl['avg_margin']}%"</span>)
+    <span class="nm">c4</span>.<span class="fn">metric</span>(<span class="st">"Health"</span>,  <span class="st">f"{sc}/100"</span>, <span class="nm">lb</span>)</pre></div>`,
+    exercise:{task:'Wire all your Engine functions into the dashboard.',steps:['Import all your engine functions into dashboard.py','After file upload, call all four functions','Display the 4 metric cards from real data','Paste what the 4 metric cards show'],inputLabel:'Paste your 4 metric values:',placeholder:'K138,000\nK50,000\n36.2%\n74/100 Healthy',
+    grader:(v)=>{if(v.includes('K')&&v.includes('%')&&v.includes('/100')) return {pass:true,msg:'Live data flowing into the dashboard. You have connected the Engine to the UI. The numbers on screen come from the user\'s actual uploaded file, processed through your P&L, variance, and health score functions.'};return {fail:true,msg:'Make sure you import the engine functions at the top of dashboard.py. After the file upload loads the df, call analyse_pnl(df), detect_variances(df), and health_score(pnl, alerts) in sequence.'}}},
+    errors:[]
+  },
+  {
+    id:'stchat',name:'"Ask Anything" Chat Box',icon:'💬',xp:150,time:'30 min',deps:['stlayout'],
+    blurb:'The centrepiece feature — a conversation with your business data.',
+    learn:`<div class="lesson-section"><div class="ls-label">This is the AI-BOS product</div><div class="ls-body">The "Ask Your Business Anything" chat box is what every customer will use daily. "Why did March revenue drop?" "What should I cut first to improve margin?" "How much cash will I have in 60 days?"<br><br>st.chat_input() captures the user's question. st.chat_message() displays messages. session_state stores the conversation history. Claude answers with the business data as context. <strong>This 20-line block is the core of the Decision Engine.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="nm">st</span>.<span class="fn">subheader</span>(<span class="st">"Ask Your Business Anything"</span>)
+
+<span class="kw">if</span> <span class="st">"chat"</span> <span class="kw">not in</span> <span class="nm">st</span>.session_state:
+    <span class="nm">st</span>.session_state.chat = []
+
+<span class="kw">for</span> <span class="nm">msg</span> <span class="kw">in</span> <span class="nm">st</span>.session_state.chat:
+    <span class="nm">st</span>.<span class="fn">chat_message</span>(<span class="nm">msg</span>[<span class="st">"role"</span>]).<span class="fn">write</span>(<span class="nm">msg</span>[<span class="st">"content"</span>])
+
+<span class="kw">if</span> <span class="nm">q</span> := <span class="nm">st</span>.<span class="fn">chat_input</span>(<span class="st">"e.g. Why did my worst month perform so badly?"</span>):
+    <span class="nm">st</span>.session_state.chat.<span class="fn">append</span>({<span class="st">"role"</span>:<span class="st">"user"</span>,<span class="st">"content"</span>:<span class="nm">q</span>})
+    <span class="nm">context</span> = <span class="st">f"Business data: {pnl}. User asks: {q}"</span>
+    <span class="nm">r</span> = <span class="nm">client</span>.messages.<span class="fn">create</span>(
+        <span class="nm">model</span>=<span class="st">"claude-sonnet-4-20250514"</span>, <span class="nm">max_tokens</span>=<span class="nm">600</span>,
+        <span class="nm">system</span>=<span class="st">"You are an expert CFO. Answer using only the provided data."</span>,
+        <span class="nm">messages</span>=[{<span class="st">"role"</span>:<span class="st">"user"</span>,<span class="st">"content"</span>:<span class="nm">context</span>}]
+    )
+    <span class="nm">answer</span> = <span class="nm">r</span>.content[<span class="nm">0</span>].text
+    <span class="nm">st</span>.session_state.chat.<span class="fn">append</span>({<span class="st">"role"</span>:<span class="st">"assistant"</span>,<span class="st">"content"</span>:<span class="nm">answer</span>})
+    <span class="nm">st</span>.<span class="fn">rerun</span>()</pre></div>`,
+    exercise:{task:'Add the chat box and ask your first business question.',steps:['Add the chat code to dashboard.py, inside the "if df is loaded" block','Run the app, upload your test CSV','In the chat box, type: "What was the best month and why might it have performed better?"','Paste Claude\'s response'],inputLabel:'Paste Claude\'s answer to your question:',placeholder:'Based on the data, [month] was the best month with K[x] revenue...',
+    grader:(v)=>{if(v.trim().length>80) return {pass:true,msg:'The AI-BOS conversational interface is live. A business owner just asked their business a question and received an intelligent, data-backed answer. This is the feature that justifies the subscription — the ability to have a conversation with your financial data at any time.'};return {fail:true,msg:'Type a question in the chat input box in your browser. If nothing happens, check that the if q := st.chat_input(...): block is inside the section where df and pnl are available.'}}},
+    errors:[{err:"NameError: pnl is not defined inside chat block",why:"The chat code is outside the if 'df' in session_state: block.",fix:'Make sure all code that uses pnl, df, or score is indented inside the if st.session_state.get("df") is not None: block. The chat box must be in the same scope as these variables.'}]
+  },
+  ]
+},
+{
+  id:'s6',name:'Deploy & Launch',color:'#8b5cf6',time:'Days 17–21',
+  skills:[
+  {
+    id:'req',name:'requirements.txt',icon:'📄',xp:60,time:'5 min',deps:['stchat'],
+    blurb:'Tell the server what to install.',
+    learn:`<div class="lesson-section"><div class="ls-label">Why this file is mandatory</div><div class="ls-body">Streamlit Cloud deploys your app on its own servers. Those servers start empty — they do not have pandas, plotly, or anthropic installed. requirements.txt is the list of libraries the server must install before running your app. Without it, every import crashes with ModuleNotFoundError and the app fails to start.</div></div>`,
+    codeBreakdown:`<div class="code-full"><pre><span class="cm"># requirements.txt — create this file in your project folder</span>
+streamlit==1.40.0
+pandas==2.2.0
+plotly==5.24.0
+anthropic==0.40.0
+openpyxl==3.1.2</pre></div>`,
+    exercise:{task:'Create requirements.txt and test it.',steps:['Create requirements.txt in the same folder as dashboard.py','Add the 5 libraries','In terminal: pip install -r requirements.txt','Paste the final line of terminal output'],inputLabel:'Paste the final line of pip output:',placeholder:'Successfully installed streamlit-1.40.0 pandas-2.2.0...',
+    grader:(v)=>{if(v.toLowerCase().includes('success')||v.toLowerCase().includes('installed')) return {pass:true,msg:'requirements.txt validated. This file goes to GitHub with your code. Streamlit Cloud reads it and installs everything before running your app.'};return {fail:true,msg:'Run pip install -r requirements.txt in the terminal and paste the last line of output.'}}},
+    errors:[]
+  },
+  {
+    id:'git',name:'Git & GitHub',icon:'🐙',xp:100,time:'22 min',deps:['req'],
+    blurb:'Version control and cloud storage — how you deploy.',
+    learn:`<div class="lesson-section"><div class="ls-label">The 4 commands you need</div><div class="ls-body">Git is version control — it tracks changes to your code. GitHub stores your code in the cloud. Streamlit Cloud deploys from GitHub. You need exactly 4 commands: init, add, commit, push. That covers 90% of day-to-day usage.</div></div>
+<div class="warn-box"><div class="wb-label">⚠ NEVER COMMIT YOUR API KEY</div><p>Create a file called <strong>.gitignore</strong> in your project folder containing the line: <strong>.env</strong>. This prevents your API keys from being pushed to GitHub. If your key is ever exposed on GitHub, regenerate it immediately from console.anthropic.com.</p></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="cm"># In VS Code terminal, in your project folder:</span>
+git init
+git add .
+git commit -m <span class="st">"AI-BOS Engine 1 — initial build"</span>
+
+<span class="cm"># On GitHub: create a repo called aibos-engine1</span>
+<span class="cm"># Then connect and push:</span>
+git remote add origin https://github.com/yourname/aibos-engine1.git
+git push -u origin main</pre></div>`,
+    exercise:{task:'Push your project to GitHub.',steps:['Create a GitHub account at github.com','Create a new repository called aibos-engine1','Run the 4 git commands in your terminal','Paste the URL of your GitHub repo'],inputLabel:'Paste your GitHub repo URL:',placeholder:'https://github.com/yourname/aibos-engine1',
+    grader:(v)=>{if(v.includes('github.com')) return {pass:true,msg:'Code is on GitHub. Streamlit Cloud can now see your repository. Every git push you make will trigger a redeploy of your live app — this is your deployment pipeline.'};return {fail:true,msg:'Create the repo on github.com first, then run the git commands. The URL should be in the format: https://github.com/yourusername/aibos-engine1'}}},
+    errors:[{err:"fatal: remote origin already exists",why:"You already added a remote origin. This happens if you retry the command.",fix:'Remove the old one first: git remote remove origin — then re-add it.'}]
+  },
+  {
+    id:'deploy',name:'Deploy to Streamlit Cloud',icon:'☁️',xp:120,time:'15 min',deps:['git'],
+    blurb:'Live on the internet. Real URL. Anyone can access it.',
+    learn:`<div class="lesson-section"><div class="ls-label">Free hosting, live in 5 minutes</div><div class="ls-body">Streamlit Cloud (share.streamlit.io) is free for public apps. You connect your GitHub account, select your repo and main file, add your API key as a secret, and click Deploy. The app is live within 3–5 minutes at a public URL you can share immediately.</div></div>`,
+    codeBreakdown:`<div class="code-full"><pre><span class="cm"># In Streamlit Cloud dashboard:</span>
+<span class="cm"># 1. Connect GitHub account</span>
+<span class="cm"># 2. Select repo: aibos-engine1</span>
+<span class="cm"># 3. Main file path: dashboard.py</span>
+<span class="cm"># 4. Advanced → Secrets → paste:</span>
+ANTHROPIC_API_KEY = <span class="st">"sk-ant-your-key-here"</span>
+
+<span class="cm"># In dashboard.py, read it:</span>
+<span class="nm">api_key</span> = <span class="nm">st</span>.secrets[<span class="st">"ANTHROPIC_API_KEY"</span>]</pre></div>`,
+    exercise:{task:'Deploy AI-BOS Engine 1 live.',steps:['Go to share.streamlit.io','Connect GitHub, select your repo','Add ANTHROPIC_API_KEY to secrets','Click Deploy and wait 3–5 minutes','Paste your live app URL'],inputLabel:'Paste your live app URL:',placeholder:'https://yourname-aibos-engine1-dashboard-xyz.streamlit.app',
+    grader:(v)=>{if(v.includes('streamlit.app')||v.includes('http')) return {pass:true,msg:'AI-BOS Engine 1 is live on the internet. Share this URL with any business and they can upload their spreadsheet, get a full financial analysis, and ask their data questions. You just launched a product.'};return {fail:true,msg:'After deployment completes (green checkmark in Streamlit Cloud), the URL appears at the top of the page. It ends in .streamlit.app'}}},
+    errors:[]
+  },
+  {
+    id:'supabase',name:'Supabase Database',icon:'🗄️',xp:140,time:'40 min',deps:['deploy'],
+    blurb:'Store user data so clients can return to past analyses.',
+    learn:`<div class="lesson-section"><div class="ls-label">Why you need a database</div><div class="ls-body">Without a database, every session is isolated — the user uploads, sees their analysis, closes the tab, and it is gone. With Supabase, you store each analysis result. Users can log in, see their history, track progress over time, and compare months. <strong>This transforms AI-BOS from a tool into a product with retention.</strong></div></div>`,
+    codeBreakdown:`
+<div class="code-full"><pre><span class="kw">from</span> <span class="nm">supabase</span> <span class="kw">import</span> <span class="fn">create_client</span>
+<span class="kw">import</span> <span class="nm">streamlit</span> <span class="kw">as</span> <span class="nm">st</span>
+
+<span class="nm">db</span> = <span class="fn">create_client</span>(
+    <span class="nm">st</span>.secrets[<span class="st">"SUPABASE_URL"</span>],
+    <span class="nm">st</span>.secrets[<span class="st">"SUPABASE_KEY"</span>]
+)
+
+<span class="kw">def</span> <span class="fn">save_analysis</span>(<span class="nm">pnl</span>, <span class="nm">score</span>, <span class="nm">label</span>):
+    <span class="nm">db</span>.<span class="fn">table</span>(<span class="st">"analyses"</span>).<span class="fn">insert</span>({
+        <span class="st">"total_revenue"</span>: <span class="nm">pnl</span>[<span class="st">"total_revenue"</span>],
+        <span class="st">"total_profit"</span>:  <span class="nm">pnl</span>[<span class="st">"total_profit"</span>],
+        <span class="st">"avg_margin"</span>:    <span class="nm">pnl</span>[<span class="st">"avg_margin"</span>],
+        <span class="st">"health_score"</span>:  <span class="nm">score</span>,
+        <span class="st">"health_label"</span>:  <span class="nm">label</span>,
+    }).<span class="fn">execute</span>()</pre></div>`,
+    exercise:{task:'Set up Supabase and save your first analysis.',steps:['Create free account at supabase.com','Create a project and a table called "analyses" with the columns above','Install: pip install supabase','Add SUPABASE_URL and SUPABASE_KEY to your .env and Streamlit secrets','Call save_analysis() after a successful upload and analysis','Check the Supabase dashboard — your row should appear'],inputLabel:'Describe what you see in Supabase table view:',placeholder:'1 row visible with revenue, profit, margin, score values',
+    grader:(v)=>{if(v.trim().length>10) return {pass:true,msg:'Database connected and writing. Every analysis from every user is now persisted. This data becomes the foundation for tracking business progress over time — a key AI-BOS value proposition for recurring subscribers.'};return {fail:true,msg:'Check the Supabase table editor (in the left menu) — if the row is not there, check the terminal for errors when save_analysis() runs.'}}},
+    errors:[]
+  },
+  {
+    id:'stripe',name:'Stripe Payments',icon:'💳',xp:150,time:'45 min',deps:['supabase'],
+    blurb:'The moment AI-BOS becomes a business.',
+    learn:`<div class="lesson-section"><div class="ls-label">The simplest payment implementation</div><div class="ls-body">You do not need to write payment processing code. Stripe's <strong>Payment Links</strong> let you create a subscription product in the Stripe dashboard, generate a payment link, and embed it in your app as a button. When a user pays, Stripe handles everything. You later add webhook integration to unlock premium features after payment.<br><br><strong>The goal for day one: a Subscribe button that takes real money.</strong> Polish the webhook integration later.</div></div>`,
+    codeBreakdown:`<div class="code-full"><pre><span class="cm"># Simplest possible implementation:</span>
+<span class="cm"># 1. Create account at stripe.com</span>
+<span class="cm"># 2. Create Product: "AI-BOS Starter" K350/month</span>
+<span class="cm"># 3. Create Payment Link (Products → Payment Links)</span>
+<span class="cm"># 4. In Streamlit:</span>
+
+<span class="nm">st</span>.<span class="fn">divider</span>()
+<span class="nm">st</span>.<span class="fn">subheader</span>(<span class="st">"Unlock Full Access"</span>)
+<span class="nm">st</span>.<span class="fn">link_button</span>(
+    <span class="st">"Subscribe — K350/month"</span>,
+    <span class="st">"https://buy.stripe.com/your-payment-link"</span>
+)</pre></div>`,
+    exercise:{task:'Add a subscription button to your live app.',steps:['Create a Stripe account at stripe.com (test mode is fine to start)','Create a product and set a monthly price','Generate a Payment Link','Add st.link_button() to your dashboard.py','Push to GitHub (auto-redeploys)','Paste the live URL with the button visible'],inputLabel:'Paste your live app URL with the Subscribe button:',placeholder:'https://yourname-aibos.streamlit.app',
+    grader:(v)=>{if(v.includes('http')||v.includes('stripe')||v.includes('button')) return {pass:true,msg:'🚀 AI-BOS Financial Intelligence Engine is complete and monetised. You have built: a Python financial analysis engine, connected it to Claude AI, displayed it in a live web dashboard, deployed it to the internet, connected a database, and added payment infrastructure. This is a real SaaS product. Engine 1 is done.'};return {fail:true,msg:'Add the st.link_button() to dashboard.py, git push, wait for Streamlit to redeploy (1–2 minutes), then share the URL.'}}},
+    errors:[]
+  },
+  ]
+},
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let completed = new Set(JSON.parse(localStorage.getItem('aibos_v2')||'[]'));
+let currentSkill = null;
+let currentStage = null;
+let openErrors = new Set();
+
+function save(){ localStorage.setItem('aibos_v2', JSON.stringify([...completed])); }
+function isUnlocked(sk){ return sk.deps.every(d=>completed.has(d)); }
+function getTotalXP(){ let x=0; STAGES.forEach(s=>s.skills.forEach(sk=>{ if(completed.has(sk.id)) x+=sk.xp; })); return x; }
+function getMaxXP(){ let x=0; STAGES.forEach(s=>s.skills.forEach(sk=>x+=sk.xp)); return x; }
+function getLevel(xp){
+  if(xp<150) return [1,'Beginner'];
+  if(xp<400) return [2,'Learner'];
+  if(xp<800) return [3,'Builder'];
+  if(xp<1300) return [4,'Developer'];
+  if(xp<1900) return [5,'Engineer'];
+  if(xp<2500) return [6,'AI Builder'];
+  return [7,'Founder'];
+}
+function updateXP(){
+  const xp=getTotalXP(), max=getMaxXP();
+  document.getElementById('xpNow').textContent=xp;
+  document.getElementById('xpMax').textContent=max;
+  document.getElementById('xpFill').style.width=max>0?(xp/max*100)+'%':'0%';
+  const [n,l]=getLevel(xp);
+  document.getElementById('lvlChip').textContent=`LVL ${n} · ${l}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER STAGE BAR
+// ═══════════════════════════════════════════════════════════════════════════
+function renderBar(){
+  const el=document.getElementById('stageBar');
+  el.innerHTML='';
+  STAGES.forEach((st,i)=>{
+    const done=st.skills.filter(s=>completed.has(s.id)).length;
+    const pct=done/st.skills.length*100;
+    const d=document.createElement('div');
+    d.className='sb-pill';
+    d.innerHTML=`<div class="sb-num">Stage ${i+1}</div><div class="sb-name" style="color:${st.color}">${st.name}</div><div class="sb-track"><div class="sb-fill" style="width:${pct}%;background:${st.color}"></div></div>`;
+    el.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER TREE
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTree(){
+  const main=document.getElementById('treeMain');
+  main.innerHTML='';
+  STAGES.forEach(st=>{
+    const done=st.skills.filter(s=>completed.has(s.id)).length;
+    const sec=document.createElement('div');
+    sec.className='stage-sec';
+    sec.innerHTML=`<div class="stage-hdr"><div class="stage-dot" style="background:${st.color}"></div><div class="stage-lbl" style="color:${st.color}">${st.name}</div><div class="stage-meta">${st.time} &nbsp;·&nbsp; <span style="color:${st.color}">${done}/${st.skills.length}</span> complete</div></div><div class="skill-grid" id="g-${st.id}"></div>`;
+    main.appendChild(sec);
+    const grid=sec.querySelector(`#g-${st.id}`);
+    st.skills.forEach(sk=>{
+      const unlocked=isUnlocked(sk)||completed.has(sk.id);
+      const done=completed.has(sk.id);
+      const isSel=currentSkill&&currentSkill.id===sk.id;
+      const node=document.createElement('div');
+      node.className=`node${done?' done':''}${!unlocked?' locked':''}${isSel?' sel':''}`;
+      node.style.setProperty('--nc',st.color);
+      node.innerHTML=`<div class="node-top"><div class="node-ico">${sk.icon}</div><div class="node-check">${done?'✓':''}</div></div><div class="node-name">${sk.name}</div><div class="node-blurb">${sk.blurb}</div><div class="node-footer"><div class="node-xp">+${sk.xp} XP</div><div class="node-time">${sk.time}</div></div>`;
+      if(unlocked){ node.addEventListener('click',()=>openSkill(sk,st)); }
+      grid.appendChild(node);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OPEN LESSON SHEET
+// ═══════════════════════════════════════════════════════════════════════════
+function openSkill(sk, st){
+  currentSkill=sk; currentStage=st;
+  renderTree();
+
+  document.getElementById('shIco').textContent=sk.icon;
+  document.getElementById('shTitle').textContent=sk.name;
+  document.getElementById('shMeta').innerHTML=`
+    <span class="chip chip-stage">${st.name}</span>
+    <span class="chip chip-time">⏱ ${sk.time}</span>
+    <span class="chip chip-xp">+${sk.xp} XP</span>
+    ${sk.deps.length>0?`<span class="chip" style="background:rgba(124,58,237,.12);color:#a78bfa">Requires: ${sk.deps.join(', ')}</span>`:''}
+  `;
+
+  buildLearnTab(sk, st);
+  buildCodeTab(sk);
+  buildExerciseTab(sk, st);
+  buildErrorsTab(sk, st);
+
+  switchTab('learn', document.querySelector('.tab-btn.active')||document.querySelector('.tab-btn'));
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{ b.classList.remove('active'); if(i===0) b.classList.add('active'); });
+
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').scrollTop=0;
+}
+
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target===document.getElementById('overlay')) closeSheet(); });
+
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUILD TABS
+// ═══════════════════════════════════════════════════════════════════════════
+function buildLearnTab(sk, st){
+  document.getElementById('tab-learn').innerHTML=sk.learn||'<p style="color:var(--muted2)">Content coming soon.</p>';
+}
+
+function buildCodeTab(sk){
+  const el=document.getElementById('tab-code');
+  el.innerHTML=sk.codeBreakdown||`<p style="color:var(--muted2)">Code breakdown coming soon.</p>`;
+}
+
+function buildExerciseTab(sk, st){
+  const el=document.getElementById('tab-exercise');
+  const done=completed.has(sk.id);
+  const ex=sk.exercise;
+  if(!ex){ el.innerHTML='<p style="color:var(--muted2)">Exercise coming soon.</p>'; return; }
+
+  const steps=ex.steps.map((s,i)=>`<div class="ex-step"><div class="ex-step-num">${i+1}</div><p>${s}</p></div>`).join('');
+
+  el.innerHTML=`
+    <div class="ex-task">
+      <div class="ex-task-label">▶ YOUR MISSION</div>
+      <p>${ex.task}</p>
+    </div>
+    <div class="ex-steps">${steps}</div>
+    <div style="margin-top:20px">
+      <div class="ex-input-label">${ex.inputLabel||'Paste your output:'}</div>
+      <textarea class="ex-textarea" id="exInput" placeholder="${ex.placeholder||''}" rows="4"></textarea>
+      <button class="grade-btn" onclick="gradeExercise()">Check My Answer →</button>
+      <div class="grade-result" id="gradeResult"><div class="gr-title" id="gradeTitle"></div><div class="gr-body" id="gradeBody"></div></div>
+    </div>
+    <button class="complete-btn${done?' done':''}" id="completeBtn" onclick="toggleComplete()">
+      ${done?'✓ Completed — click to undo':`Mark as Done +${sk.xp} XP`}
+    </button>
+  `;
+}
+
+function buildErrorsTab(sk, st){
+  const el=document.getElementById('tab-errors');
+  const errors=sk.errors||[];
+  let html='';
+  if(errors.length===0){ html='<p style="color:var(--muted2);font-size:13px;">No specific errors documented for this skill yet. Use the paste helper below if you encounter an error.</p>'; }
+  errors.forEach((e,i)=>{
+    html+=`<div class="error-card">
+      <div class="ec-header" onclick="toggleErr(${i})">
+        <div class="ec-err">${e.err}</div>
+        <div class="ec-toggle" id="ec-t-${i}">▼</div>
+      </div>
+      <div class="ec-body" id="ec-b-${i}">
+        <div class="ec-why">${e.why}</div>
+        <div class="ec-fix-label">✓ HOW TO FIX IT</div>
+        <div class="ec-fix">${e.fix}</div>
+      </div>
+    </div>`;
+  });
+  html+=`<div class="error-helper">
+    <div class="eh-label">PASTE ANY ERROR FOR INSTANT HELP</div>
+    <textarea class="eh-input" id="errInput" placeholder="Paste the error message from your terminal here..."></textarea>
+    <button class="eh-btn" onclick="diagError()">Diagnose Error →</button>
+    <div class="eh-result" id="errResult"></div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+function toggleErr(i){
+  const b=document.getElementById('ec-b-'+i);
+  const t=document.getElementById('ec-t-'+i);
+  b.classList.toggle('open');
+  t.textContent=b.classList.contains('open')?'▲':'▼';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GRADING
+// ═══════════════════════════════════════════════════════════════════════════
+function gradeExercise(){
+  if(!currentSkill||!currentSkill.exercise||!currentSkill.exercise.grader) return;
+  const val=document.getElementById('exInput').value;
+  if(!val.trim()){ document.getElementById('gradeResult').className='grade-result fail'; document.getElementById('gradeResult').style.display='block'; document.getElementById('gradeTitle').textContent='Nothing to check'; document.getElementById('gradeBody').textContent='Paste your output first, then click Check.'; return; }
+  const result=currentSkill.exercise.grader(val);
+  const el=document.getElementById('gradeResult');
+  el.className='grade-result '+(result.pass?'pass':result.partial?'partial':'fail');
+  el.style.display='block';
+  document.getElementById('gradeTitle').textContent=result.pass?'✓ Correct!':result.partial?'⚡ Almost there':'✗ Not quite';
+  document.getElementById('gradeBody').innerHTML=result.msg.replace(/\n/g,'<br>');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ERROR DIAGNOSER
+// ═══════════════════════════════════════════════════════════════════════════
+function diagError(){
+  const v=(document.getElementById('errInput').value||'').toLowerCase();
+  const el=document.getElementById('errResult');
+  el.classList.add('show');
+  const rules=[
+    {match:'nameerror',msg:'<strong>NameError</strong> means you referenced a variable or function that does not exist yet. Check: (1) Is it defined before you use it? (2) Is the spelling and capitalisation exactly right? (3) Is it inside the right scope (function/loop)?'},
+    {match:'syntaxerror',msg:'<strong>SyntaxError</strong> means Python cannot parse your code. Check: (1) Are all brackets/parentheses closed? (2) Is there a colon after every if/for/def/else? (3) Are quotes matching (open and close with same type)?'},
+    {match:'indentationerror',msg:'<strong>IndentationError</strong> means your spacing is wrong. Use exactly 4 spaces (or 1 Tab) for each level of indentation. Never mix tabs and spaces. The line number in the error shows where Python got confused.'},
+    {match:'keyerror',msg:'<strong>KeyError</strong> means you tried to access a dict key that does not exist. Check df.columns.tolist() or print(dict.keys()) to see the exact available keys. Keys are case-sensitive.'},
+    {match:'typeerror',msg:'<strong>TypeError</strong> means you used the wrong type. Common causes: (1) adding a string to a number, (2) calling a function with the wrong number of arguments, (3) using a non-list in a for loop.'},
+    {match:'indexerror',msg:'<strong>IndexError</strong> means you tried to access a list position that does not exist. Remember Python lists start at 0. A list with 6 items has valid positions 0–5. Position 6 does not exist.'},
+    {match:'filenotfounderror',msg:'<strong>FileNotFoundError</strong> means Python cannot find your CSV or Excel file. Make sure the file is in the same folder as your Python script. Check spelling exactly — filenames are case-sensitive on Mac/Linux.'},
+    {match:'modulenotfounderror',msg:'<strong>ModuleNotFoundError</strong> means a library is not installed. Run in terminal: <strong>pip install [library-name]</strong>. Make sure you are using the same Python/terminal as VS Code.'},
+    {match:'zerodivision',msg:'<strong>ZeroDivisionError</strong> means you divided by zero. In financial code this usually means a revenue or denominator value is 0. Add a check: if revenue != 0: before the division.'},
+    {match:'attributeerror',msg:'<strong>AttributeError</strong> means you called a method that does not exist on that type. For example, calling .sum() on a non-numeric column, or .mean() on a string. Check the data type with print(df.dtypes).'},
+    {match:'authenticationerror',msg:'<strong>AuthenticationError</strong> from Anthropic means your API key is wrong or not set. Check: (1) The environment variable is set in the SAME terminal session. (2) The key starts with sk-ant-. (3) The key is not expired in console.anthropic.com.'},
+  ];
+  const found=rules.find(r=>v.includes(r.match));
+  el.innerHTML=found?found.msg:`<strong>Error not in database.</strong> Try: (1) Google the exact error message. (2) Check the line number Python mentions. (3) Add print() statements before the error line to see what values Python has at that point. (4) Share the full error in the AI-BOS learning community.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPLETE TOGGLE
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleComplete(){
+  if(!currentSkill) return;
+  const sk=currentSkill, st=currentStage;
+  const wasDone=completed.has(sk.id);
+  if(wasDone){ completed.delete(sk.id); }
+  else { completed.add(sk.id); showToast(`+${sk.xp} XP — ${sk.name}`); }
+  save(); renderTree(); renderBar(); updateXP();
+
+  const btn=document.getElementById('completeBtn');
+  if(btn){
+    const now=completed.has(sk.id);
+    btn.className='complete-btn'+(now?' done':'');
+    btn.textContent=now?'✓ Completed — click to undo':`Mark as Done +${sk.xp} XP`;
+  }
+
+  if(!wasDone){
+    const allStageDone=st.skills.every(s=>completed.has(s.id));
+    if(allStageDone) setTimeout(()=>showStageModal(st),500);
+    const allDone=STAGES.every(s=>s.skills.every(sk=>completed.has(sk.id)));
+    if(allDone) setTimeout(()=>showFinalModal(),700);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOAST & MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent='⚡ '+msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+function showStageModal(st){
+  document.getElementById('modalBox').innerHTML=`<div class="modal-emoji">🏆</div><div class="modal-title" style="color:${st.color}">${st.name} Complete</div><div class="modal-sub">Every skill in this stage is done. The next stage is now fully unlocked. You are building something real.</div><button class="modal-close" onclick="document.getElementById('modal').classList.remove('show')">Keep Going →</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+function showFinalModal(){
+  document.getElementById('modalBox').innerHTML=`<div class="modal-emoji">🚀</div><div class="modal-title">Engine 1 Complete</div><div class="modal-sub">You built the Financial Intelligence Engine from scratch. Python, pandas, Claude API, Streamlit, Supabase, Stripe. Deployed. Live. Taking payments. AI-BOS Engine 1 is a real product.</div><button class="modal-close" onclick="document.getElementById('modal').classList.remove('show')">Launch Engine 2 🔥</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+renderBar(); renderTree(); updateXP();
+</script>
+</body>
+</html>

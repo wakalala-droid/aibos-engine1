@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import os
 from groq import Groq
+from supabase import create_client
 from engine import (
     analyse_pnl,
     forecast_cashflow,
@@ -11,8 +12,12 @@ from engine import (
     get_structured_analysis
 )
 
-# ── AI CLIENT ─────────────────────────────────────────────
+# ── CLIENTS ───────────────────────────────────────────────
 client_ai = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+db = create_client(
+    os.environ.get("SUPABASE_URL"),
+    os.environ.get("SUPABASE_KEY")
+)
 
 # ── PAGE HEADER ───────────────────────────────────────────
 st.title("AI-BOS Financial Engine")
@@ -37,11 +42,28 @@ if uploaded:
 
     st.success(f"Loaded {len(df)} rows successfully")
 
-    # ── RUN ENGINE FUNCTIONS ──────────────────────────────
+    # ── RUN ENGINE ────────────────────────────────────────
     pnl          = analyse_pnl(df)
     forecast     = forecast_cashflow(df)
     alerts       = detect_variances(df)
     score, label = health_score(pnl, alerts)
+
+    # ── SAVE TO SUPABASE ──────────────────────────────────
+    try:
+        db.table("analyses").insert({
+            "total_revenue": float(pnl["total_revenue"]),
+            "total_costs":   float(pnl["total_costs"]),
+            "total_profit":  float(pnl["total_profit"]),
+            "avg_margin":    float(pnl["avg_margin"]),
+            "health_score":  int(score),
+            "health_label":  label,
+            "best_month":    pnl["best_month"],
+            "worst_month":   pnl["worst_month"],
+            "alerts_count":  len(alerts)
+        }).execute()
+        st.toast("Analysis saved ✓")
+    except Exception as e:
+        st.error(f"Save failed: {e}")
 
     # ── METRIC CARDS ──────────────────────────────────────
     st.subheader("Financial Summary")
@@ -74,8 +96,7 @@ if uploaded:
     # ── CASH FLOW FORECAST ────────────────────────────────
     st.subheader("Cash Flow Forecast")
     for item in forecast:
-        status = "✓" if item['status'] == "✓ Positive" else "⚠"
-        st.write(f"Month {item['month_ahead']}: K{item['projected_cash']:,} {status}")
+        st.write(f"Month {item['month_ahead']}: K{item['projected_cash']:,} {item['status']}")
 
     # ── AI RECOMMENDATIONS ────────────────────────────────
     st.subheader("AI CFO Recommendations")
@@ -111,3 +132,27 @@ if uploaded:
         answer = response.choices[0].message.content
         st.session_state.chat.append({"role": "assistant", "content": answer})
         st.rerun()
+
+# ── ANALYSIS HISTORY ──────────────────────────────────────
+st.divider()
+st.subheader("Past Analyses")
+if st.button("Load History"):
+    try:
+        history = db.table("analyses").select("*").order("created_at", desc=True).limit(10).execute()
+        if history.data:
+            for record in history.data:
+                st.write(f"**{record['created_at'][:10]}** — Revenue: K{record['total_revenue']:,} | Health: {record['health_score']}/100 — {record['health_label']}")
+        else:
+            st.info("No analyses saved yet.")
+    except Exception as e:
+        st.error(f"Could not load history: {e}")
+
+
+# ── GET STARTED ───────────────────────────────────────────
+st.divider()
+st.subheader("Want Full Access?")
+st.write("Contact us directly to get started with AI-BOS for your business.")
+st.link_button(
+    "💬 WhatsApp Us — Get Started",
+    "https://wa.me/260973759352"
+)

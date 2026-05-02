@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import re
 from groq import Groq
 from supabase import create_client
 from engine import (
@@ -274,6 +275,171 @@ CHART_THEME = dict(
 )
 
 # ══════════════════════════════════════════════════════════════
+# FILE INGESTION HELPERS (robust schema auto-mapping)
+# ══════════════════════════════════════════════════════════════
+def _normalize_col_name(name: str) -> str:
+    name = str(name).replace("\ufeff", "").strip().lower()
+    name = re.sub(r"[^a-z0-9]+", "_", name)
+    name = re.sub(r"_+", "_", name).strip("_")
+    return name
+
+
+def _to_number(series: pd.Series) -> pd.Series:
+    s = series.astype(str).str.strip()
+    s = s.str.replace("\u00a0", "", regex=False).str.replace(",", "", regex=False)
+    s = s.str.replace(r"^\((.*)\)$", r"-\1", regex=True)  # (123) -> -123
+    s = s.str.replace(r"[^0-9.\-]", "", regex=True)
+    return pd.to_numeric(s, errors="coerce")
+
+
+def _pick_column(columns, exact_aliases, contains_aliases=()):
+    col_set = set(columns)
+    for alias in exact_aliases:
+        if alias in col_set:
+            return alias
+    for col in columns:
+        if any(token in col for token in contains_aliases):
+            return col
+    return None
+
+
+def _pick_revenue_column(columns):
+    # Try strict aliases first.
+    col = _pick_column(
+        columns,
+        exact_aliases=("revenue", "sales", "turnover", "income", "net_sales", "total_revenue"),
+        contains_aliases=("revenue", "sales", "turnover", "income"),
+    )
+    if col:
+        return col
+
+    # Fallback: catch common misspellings like "revnue" / "reveneu" and suffixed names.
+    for c in columns:
+        compact = c.replace("_", "")
+        if compact.startswith("rev") and ("nue" in compact or "enu" in compact):
+            return c
+    return None
+
+
+def load_financial_file(uploaded_file):
+    ext = os.path.splitext(uploaded_file.name.lower())[1]
+
+    if ext in {".xlsx", ".xls", ".xlsm", ".xlsb"}:
+        uploaded_file.seek(0)
+        df = pd.read_excel(uploaded_file)
+    else:
+        csv_errors = []
+        for enc in ("utf-8", "utf-8-sig", "latin1"):
+            try:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, encoding=enc)
+                break
+            except Exception as e:
+                csv_errors.append(f"{enc}: {e}")
+        else:
+            raise ValueError(f"Could not read CSV. Attempts: {' | '.join(csv_errors)}")
+
+    if df.empty:
+        raise ValueError("File loaded but has no rows.")
+
+    # Standardize all headers once, then auto-map common finance aliases.
+    df.columns = [_normalize_col_name(c) for c in df.columns]
+
+    revenue_col = _pick_revenue_column(df.columns)
+    cost_col = _pick_column(
+        df.columns,
+        exact_aliases=(
+            "costs",
+            "cost",
+            "expense",
+            "expenses",
+            "total_expenses",
+            "operating_expenses",
+            "cogs",
+            "opex",
+        ),
+        contains_aliases=("cost", "expense", "cogs", "opex"),
+    )
+    month_col = _pick_column(
+        df.columns,
+        exact_aliases=("month", "period", "date", "month_year", "reporting_period"),
+        contains_aliases=("month", "period", "date"),
+    )
+    profit_col = _pick_column(
+        df.columns,
+        exact_aliases=("profit", "net_profit", "gross_profit"),
+        contains_aliases=("profit",),
+    )
+    margin_col = _pick_column(
+        df.columns,
+        exact_aliases=("margin_pct", "margin_percent", "profit_margin", "margin"),
+        contains_aliases=("margin",),
+    )
+
+    if not revenue_col:
+        raise ValueError(
+            "Could not detect a revenue column. "
+            f"Found columns: {', '.join(df.columns)}"
+        )
+
+    rename_map = {revenue_col: "revenue"}
+    if cost_col:
+        rename_map[cost_col] = "costs"
+    if month_col and month_col != "month":
+        rename_map[month_col] = "month"
+    if profit_col and profit_col != "profit":
+        rename_map[profit_col] = "profit"
+    if margin_col and margin_col != "margin_pct":
+        rename_map[margin_col] = "margin_pct"
+    df = df.rename(columns=rename_map)
+
+    # Coerce financial values safely.
+    df["revenue"] = _to_number(df["revenue"])
+    if "costs" in df.columns:
+        df["costs"] = _to_number(df["costs"])
+    if "profit" in df.columns:
+        df["profit"] = _to_number(df["profit"])
+    if "margin_pct" in df.columns:
+        df["margin_pct"] = _to_number(df["margin_pct"])
+
+    # If costs are missing, derive from other available financials.
+    if "costs" not in df.columns:
+        if "profit" in df.columns:
+            df["costs"] = df["revenue"] - df["profit"]
+        elif "margin_pct" in df.columns:
+            margin_fraction = df["margin_pct"] / 100.0
+            df["profit"] = df["revenue"] * margin_fraction
+            df["costs"] = df["revenue"] - df["profit"]
+        else:
+            raise ValueError(
+                "Could not detect costs/expenses column and no profit/margin column to derive costs."
+            )
+
+    # Drop rows that have no usable financial numbers after derivation.
+    df = df.dropna(subset=["revenue", "costs"], how="all").copy()
+    if df.empty:
+        raise ValueError("No usable revenue/cost values found after cleaning.")
+
+    # Ensure a month label exists for charts/tables.
+    if "month" in df.columns:
+        parsed_month = pd.to_datetime(df["month"], errors="coerce")
+        if parsed_month.notna().any():
+            df.loc[parsed_month.notna(), "month"] = parsed_month.dt.strftime("%b %Y")
+        df["month"] = df["month"].astype(str).str.strip().replace({"": None})
+    else:
+        df["month"] = [f"Period {i+1}" for i in range(len(df))]
+
+    if "profit" not in df.columns:
+        df["profit"] = df["revenue"] - df["costs"]
+
+    if "margin_pct" not in df.columns:
+        denom = df["revenue"].replace(0, pd.NA)
+        df["margin_pct"] = (df["profit"] / denom) * 100
+    df["margin_pct"] = df["margin_pct"].fillna(0).round(1)
+
+    return df
+
+# ══════════════════════════════════════════════════════════════
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════
 with st.sidebar:
@@ -485,34 +651,9 @@ with main:
 
     # ── DATA LOADED STATE ──────────────────────────────────
     else:
-        # Load and clean data
+        # Load and clean data (supports flexible column names/formats)
         try:
-            if uploaded.name.endswith(".xlsx"):
-                df = pd.read_excel(uploaded)
-            else:
-                df = pd.read_csv(uploaded)
-
-            # Normalise column names
-            df.columns = df.columns.str.strip().str.lower().str.replace(r'[^a-z0-9_]', '_', regex=True)
-
-            # Handle expenses/costs naming convention
-            if "expenses" in df.columns and "costs" not in df.columns:
-                df = df.rename(columns={"expenses": "costs"})
-
-            # Handle pre-calculated profit columns
-            if "profit" not in df.columns:
-                df["profit"] = df["revenue"] - df["costs"]
-
-            # Handle margin column
-            if "margin_pct" not in df.columns:
-                df["margin_pct"] = (df["profit"] / df["revenue"]) * 100
-                df["margin_pct"] = df["margin_pct"].round(1)
-
-            # Normalise month column name
-            month_col = next((c for c in df.columns if 'month' in c.lower()), None)
-            if month_col and month_col != 'month':
-                df = df.rename(columns={month_col: 'month'})
-
+            df = load_financial_file(uploaded)
         except Exception as e:
             st.error(f"Failed to load file: {e}")
             st.stop()

@@ -24,32 +24,87 @@ st.set_page_config(
 )
 
 # ══════════════════════════════════════════════════════════════
-# DESIGN SYSTEM — injected CSS
+# DESIGN SYSTEM — injected CSS (use st.html so Markdown does not mangle CSS)
 # ══════════════════════════════════════════════════════════════
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+_APP_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 /* ── GLOBAL RESET ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, [data-testid="stApp"] {
-    background: #050810 !important;
+    background:#03060d !important;
     color: #d4ddf0 !important;
     font-family: 'Outfit', sans-serif !important;
 }
 
-/* Hide Streamlit chrome */
-#MainMenu, footer, header[data-testid="stHeader"] { display: none !important; }
-[data-testid="stToolbar"] { display: none !important; }
-.block-container { padding: 0 !important; max-width: 100% !important; }
+/*
+   Streamlit layout rules (don't break sidebar resize / collapse / expand):
+   - Never strip padding from [data-testid="stSidebar"] wrappers.
+   - Never apply global `.stButton` styles (they hit chrome BaseButtons).
+*/
 
-/* ── SIDEBAR ──────────────────────────────────────────────── */
+/* Minimal chrome hides (leave toolbar visible: sidebar expand lives there) */
+#MainMenu { display: none !important; }
+footer { display: none !important; }
+
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* Header inherits interaction; opaque bg so Streamlit treats it as “real”, not overlay-only */
+[data-testid="stHeader"] {
+    background: #050810 !important;
+    background-image: none !important;
+    pointer-events: auto !important;
+}
+
+/*
+   Single top gutter on the main pane only (avoid padding every nested .block-container
+   Streamlit nests many of those inside columns/widgets).
+*/
+section[data-testid="stMain"],
+section.main {
+    padding-top: 0.9 rem !important;
+}
+.block-container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 1rem !important;
+    max-width: 100% !important;
+}
+
+/* ── SIDEBAR (visual only — no sizing / padding overrides) ─── */
 [data-testid="stSidebar"] {
     background: #07091a !important;
     border-right: 1px solid rgba(99,179,237,.12) !important;
-    min-width: 260px !important;
+    pointer-events: auto !important;
 }
-[data-testid="stSidebar"] > div { padding: 0 !important; }
+
+/*
+   Sidebar expand (header) / collapse («) chrome: undo any accidental CTA styling.
+   Covers current + legacy test IDs.
+*/
+[data-testid="stHeader"] button,
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="collapsedControl"] button,
+[data-testid="stExpandSidebarButton"] button {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #d4ddf0 !important;
+    transform: none !important;
+}
+[data-testid="stHeader"] button:hover,
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="collapsedControl"] button:hover,
+[data-testid="stExpandSidebarButton"] button:hover {
+    transform: none !important;
+    background: rgba(99,179,237,0.14) !important;
+    box-shadow: none !important;
+}
 
 /* ── PLOTLY CHARTS — transparent bg ──────────────────────── */
 .js-plotly-plot .plotly, .plot-container { background: transparent !important; }
@@ -88,8 +143,12 @@ html, body, [data-testid="stApp"] {
     font-size: 11px !important;
 }
 
-/* ── BUTTONS ──────────────────────────────────────────────── */
-.stButton > button {
+/* ── BUTTONS (scoped: main, sidebar widgets, dialogs — excludes header / sidebar chrome) ─ */
+section.main .stButton > button,
+[data-testid="stMain"] .stButton > button,
+[data-testid="stSidebarUserContent"] .stButton > button,
+[data-baseweb="modal"] .stButton > button,
+div[role="dialog"] .stButton > button {
     background: linear-gradient(135deg, #1d4ed8, #0891b2) !important;
     color: #fff !important;
     border: none !important;
@@ -101,7 +160,11 @@ html, body, [data-testid="stApp"] {
     transition: all .2s !important;
     letter-spacing: .02em !important;
 }
-.stButton > button:hover {
+section.main .stButton > button:hover,
+[data-testid="stMain"] .stButton > button:hover,
+[data-testid="stSidebarUserContent"] .stButton > button:hover,
+[data-baseweb="modal"] .stButton > button:hover,
+div[role="dialog"] .stButton > button:hover {
     transform: translateY(-1px) !important;
     box-shadow: 0 8px 24px rgba(6,182,212,.25) !important;
 }
@@ -178,7 +241,11 @@ hr { border-color: rgba(99,179,237,.1) !important; }
 /* ── TOAST ────────────────────────────────────────────────── */
 [data-testid="toastContainer"] { font-family: 'DM Mono', monospace !important; }
 </style>
-""", unsafe_allow_html=True)
+"""
+if hasattr(st, "html"):
+    st.html(_APP_CSS)
+else:
+    st.markdown(_APP_CSS, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
 # CLIENTS

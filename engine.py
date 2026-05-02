@@ -8,7 +8,7 @@ import json
 from groq import Groq
 
 # ── AI CLIENT SETUP ──────────────────────────────────────
-client_ai = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+client_ai = Groq(api_key=os.environ.get("GROQ_API_KEY") or "placeholder")
 print("AI Client ready ✓")
 
 # ── LOAD DATA ────────────────────────────────────────────

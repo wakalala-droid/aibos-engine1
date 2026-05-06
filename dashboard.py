@@ -3,16 +3,31 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
-import re
+import io
 from groq import Groq
-from supabase import create_client
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from engine import (
     analyse_pnl,
     forecast_cashflow,
     detect_variances,
-    health_score,
     get_structured_analysis
 )
+from utils import load_financial_file
+from auth import (
+    get_supabase_client,
+    get_current_user,
+    get_profile_role,
+    login_with_email_password,
+    logout_current_user,
+    signup_with_email_password,
+)
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 # ══════════════════════════════════════════════════════════════
 # PAGE CONFIG
@@ -252,15 +267,12 @@ else:
 # CLIENTS
 # ══════════════════════════════════════════════════════════════
 @st.cache_resource
-def get_clients():
+def get_ai_client():
     groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-    db   = create_client(
-        os.environ.get("SUPABASE_URL"),
-        os.environ.get("SUPABASE_KEY")
-    )
-    return groq, db
+    return groq
 
-client_ai, db = get_clients()
+client_ai = get_ai_client()
+db = get_supabase_client()
 
 # ══════════════════════════════════════════════════════════════
 # CHART THEME
@@ -274,170 +286,226 @@ CHART_THEME = dict(
     margin=dict(l=0, r=0, t=32, b=0),
 )
 
-# ══════════════════════════════════════════════════════════════
-# FILE INGESTION HELPERS (robust schema auto-mapping)
-# ══════════════════════════════════════════════════════════════
-def _normalize_col_name(name: str) -> str:
-    name = str(name).replace("\ufeff", "").strip().lower()
-    name = re.sub(r"[^a-z0-9]+", "_", name)
-    name = re.sub(r"_+", "_", name).strip("_")
-    return name
+
+def _auth_error_text(error: Exception) -> str:
+    msg = str(error)
+    lowered = msg.lower()
+    if "invalid login credentials" in lowered:
+        return "Invalid email/password. If you just created the account, check if email confirmation is required in Supabase Auth settings."
+    if "email not confirmed" in lowered:
+        return "Email not confirmed yet. Confirm from your inbox or disable confirmation in Supabase Auth settings."
+    return msg
 
 
-def _to_number(series: pd.Series) -> pd.Series:
-    s = series.astype(str).str.strip()
-    s = s.str.replace("\u00a0", "", regex=False).str.replace(",", "", regex=False)
-    s = s.str.replace(r"^\((.*)\)$", r"-\1", regex=True)  # (123) -> -123
-    s = s.str.replace(r"[^0-9.\-]", "", regex=True)
-    return pd.to_numeric(s, errors="coerce")
+def _augment_alerts(df: pd.DataFrame, base_alerts: list[dict]) -> list[dict]:
+    alerts = list(base_alerts)
+    if len(df) < 2:
+        return alerts
 
+    cost_change = df["costs"].pct_change().fillna(0) * 100
+    margin_change = df["margin_pct"].diff().fillna(0)
 
-def _pick_column(columns, exact_aliases, contains_aliases=()):
-    col_set = set(columns)
-    for alias in exact_aliases:
-        if alias in col_set:
-            return alias
-    for col in columns:
-        if any(token in col for token in contains_aliases):
-            return col
-    return None
-
-
-def _pick_revenue_column(columns):
-    # Try strict aliases first.
-    col = _pick_column(
-        columns,
-        exact_aliases=("revenue", "sales", "turnover", "income", "net_sales", "total_revenue"),
-        contains_aliases=("revenue", "sales", "turnover", "income"),
-    )
-    if col:
-        return col
-
-    # Fallback: catch common misspellings like "revnue" / "reveneu" and suffixed names.
-    for c in columns:
-        compact = c.replace("_", "")
-        if compact.startswith("rev") and ("nue" in compact or "enu" in compact):
-            return c
-    return None
-
-
-def load_financial_file(uploaded_file):
-    ext = os.path.splitext(uploaded_file.name.lower())[1]
-
-    if ext in {".xlsx", ".xls", ".xlsm", ".xlsb"}:
-        uploaded_file.seek(0)
-        df = pd.read_excel(uploaded_file)
-    else:
-        csv_errors = []
-        for enc in ("utf-8", "utf-8-sig", "latin1"):
-            try:
-                uploaded_file.seek(0)
-                df = pd.read_csv(uploaded_file, encoding=enc)
-                break
-            except Exception as e:
-                csv_errors.append(f"{enc}: {e}")
-        else:
-            raise ValueError(f"Could not read CSV. Attempts: {' | '.join(csv_errors)}")
-
-    if df.empty:
-        raise ValueError("File loaded but has no rows.")
-
-    # Standardize all headers once, then auto-map common finance aliases.
-    df.columns = [_normalize_col_name(c) for c in df.columns]
-
-    revenue_col = _pick_revenue_column(df.columns)
-    cost_col = _pick_column(
-        df.columns,
-        exact_aliases=(
-            "costs",
-            "cost",
-            "expense",
-            "expenses",
-            "total_expenses",
-            "operating_expenses",
-            "cogs",
-            "opex",
-        ),
-        contains_aliases=("cost", "expense", "cogs", "opex"),
-    )
-    month_col = _pick_column(
-        df.columns,
-        exact_aliases=("month", "period", "date", "month_year", "reporting_period"),
-        contains_aliases=("month", "period", "date"),
-    )
-    profit_col = _pick_column(
-        df.columns,
-        exact_aliases=("profit", "net_profit", "gross_profit"),
-        contains_aliases=("profit",),
-    )
-    margin_col = _pick_column(
-        df.columns,
-        exact_aliases=("margin_pct", "margin_percent", "profit_margin", "margin"),
-        contains_aliases=("margin",),
-    )
-
-    if not revenue_col:
-        raise ValueError(
-            "Could not detect a revenue column. "
-            f"Found columns: {', '.join(df.columns)}"
-        )
-
-    rename_map = {revenue_col: "revenue"}
-    if cost_col:
-        rename_map[cost_col] = "costs"
-    if month_col and month_col != "month":
-        rename_map[month_col] = "month"
-    if profit_col and profit_col != "profit":
-        rename_map[profit_col] = "profit"
-    if margin_col and margin_col != "margin_pct":
-        rename_map[margin_col] = "margin_pct"
-    df = df.rename(columns=rename_map)
-
-    # Coerce financial values safely.
-    df["revenue"] = _to_number(df["revenue"])
-    if "costs" in df.columns:
-        df["costs"] = _to_number(df["costs"])
-    if "profit" in df.columns:
-        df["profit"] = _to_number(df["profit"])
-    if "margin_pct" in df.columns:
-        df["margin_pct"] = _to_number(df["margin_pct"])
-
-    # If costs are missing, derive from other available financials.
-    if "costs" not in df.columns:
-        if "profit" in df.columns:
-            df["costs"] = df["revenue"] - df["profit"]
-        elif "margin_pct" in df.columns:
-            margin_fraction = df["margin_pct"] / 100.0
-            df["profit"] = df["revenue"] * margin_fraction
-            df["costs"] = df["revenue"] - df["profit"]
-        else:
-            raise ValueError(
-                "Could not detect costs/expenses column and no profit/margin column to derive costs."
+    for idx in range(1, len(df)):
+        month = str(df.iloc[idx]["month"])
+        if cost_change.iloc[idx] > 18:
+            alerts.append(
+                {
+                    "month": month,
+                    "direction": "up",
+                    "change_pct": round(float(cost_change.iloc[idx]), 1),
+                    "type": "cost_spike",
+                }
             )
+        if margin_change.iloc[idx] < -6:
+            alerts.append(
+                {
+                    "month": month,
+                    "direction": "drop",
+                    "change_pct": round(float(abs(margin_change.iloc[idx])), 1),
+                    "type": "margin_drop",
+                }
+            )
+    return alerts
 
-    # Drop rows that have no usable financial numbers after derivation.
-    df = df.dropna(subset=["revenue", "costs"], how="all").copy()
-    if df.empty:
-        raise ValueError("No usable revenue/cost values found after cleaning.")
 
-    # Ensure a month label exists for charts/tables.
-    if "month" in df.columns:
-        parsed_month = pd.to_datetime(df["month"], errors="coerce")
-        if parsed_month.notna().any():
-            df.loc[parsed_month.notna(), "month"] = parsed_month.dt.strftime("%b %Y")
-        df["month"] = df["month"].astype(str).str.strip().replace({"": None})
+def _cash_runway_months(df: pd.DataFrame) -> float:
+    burn = (df["costs"] - df["revenue"]).clip(lower=0)
+    avg_monthly_burn = float(burn.mean()) if len(burn) else 0.0
+    latest_cash_proxy = float(df["profit"].tail(3).sum()) if "profit" in df.columns else 0.0
+    if avg_monthly_burn <= 0:
+        return 99.0
+    return max(0.0, latest_cash_proxy / avg_monthly_burn)
+
+
+def _weighted_health_score(pnl: dict, alerts: list[dict], runway_months: float) -> tuple[int, str]:
+    margin_score = max(0.0, min(100.0, float(pnl.get("avg_margin", 0)) * 3.2))
+    alerts_penalty = min(45.0, len(alerts) * 4.0)
+    runway_score = max(0.0, min(100.0, runway_months * 10.0))
+    profitability_score = 100.0 if float(pnl.get("total_profit", 0)) > 0 else 35.0
+
+    weighted = (
+        (margin_score * 0.35)
+        + (runway_score * 0.25)
+        + (profitability_score * 0.20)
+        + ((100.0 - alerts_penalty) * 0.20)
+    )
+    score = int(round(max(0.0, min(100.0, weighted))))
+
+    if score >= 85:
+        label = "Excellent"
+    elif score >= 70:
+        label = "Healthy"
+    elif score >= 50:
+        label = "At Risk"
     else:
-        df["month"] = [f"Period {i+1}" for i in range(len(df))]
+        label = "Critical"
+    return score, label
 
-    if "profit" not in df.columns:
-        df["profit"] = df["revenue"] - df["costs"]
 
-    if "margin_pct" not in df.columns:
-        denom = df["revenue"].replace(0, pd.NA)
-        df["margin_pct"] = (df["profit"] / denom) * 100
-    df["margin_pct"] = df["margin_pct"].fillna(0).round(1)
+def _build_pdf_report(pnl: dict, score: int, label: str, alerts: list[dict], runway_months: float) -> bytes:
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    w, h = A4
+    y = h - 60
 
-    return df
+    lines = [
+        "AI-BOS Executive Intelligence Report",
+        "",
+        f"Health Score: {score}/100 ({label})",
+        f"Total Revenue: K{float(pnl['total_revenue']):,.0f}",
+        f"Total Costs: K{float(pnl['total_costs']):,.0f}",
+        f"Total Profit: K{float(pnl['total_profit']):,.0f}",
+        f"Average Margin: {float(pnl['avg_margin']):.1f}%",
+        f"Cash Runway (estimated): {runway_months:.1f} months",
+        f"Alerts: {len(alerts)}",
+        f"Best Month: {pnl['best_month']}",
+        f"Worst Month: {pnl['worst_month']}",
+    ]
+
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(50, y, lines[0])
+    y -= 28
+    pdf.setFont("Helvetica", 11)
+    for line in lines[2:]:
+        pdf.drawString(50, y, line)
+        y -= 18
+        if y < 70:
+            pdf.showPage()
+            y = h - 60
+            pdf.setFont("Helvetica", 11)
+
+    pdf.save()
+    return buffer.getvalue()
+
+def _ensure_auth_state():
+    if "auth_user" not in st.session_state:
+        st.session_state.auth_user = None
+    if "is_authenticated" not in st.session_state:
+        st.session_state.is_authenticated = False
+
+
+def _render_login_screen():
+    st.markdown(
+        """
+        <div style="padding:64px 32px 24px;text-align:center;">
+            <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:800;
+                        background:linear-gradient(90deg,#60a5fa,#06b6d4);
+                        -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                        margin-bottom:10px;">AI-BOS</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:#2d4a70;
+                        letter-spacing:.14em;text-transform:uppercase;">
+                Secure Command Centre Access
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        mode = st.radio(
+            "Mode",
+            ["Sign In", "Create Account"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        email = st.text_input("Email", placeholder="you@company.com")
+        password = st.text_input("Password", type="password")
+
+        if mode == "Sign In":
+            if st.button("Enter Command Centre", use_container_width=True):
+                try:
+                    result = login_with_email_password(email.strip(), password)
+                    user = result.user
+                    role = get_profile_role(user.id, user.email)
+                    st.session_state.auth_user = {
+                        "id": user.id,
+                        "email": user.email,
+                        "role": role,
+                        "is_admin": role == "admin",
+                    }
+                    st.session_state.is_authenticated = True
+                    try:
+                        db.table("profiles").upsert(
+                            {
+                                "id": user.id,
+                                "email": user.email,
+                                "role": role,
+                                "last_seen_at": pd.Timestamp.utcnow().isoformat(),
+                            }
+                        ).execute()
+                    except Exception:
+                        pass
+                    st.success("Signed in successfully.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Login failed: {_auth_error_text(e)}")
+        else:
+            if st.button("Create Account", use_container_width=True):
+                try:
+                    signup_with_email_password(email.strip(), password)
+                    try:
+                        result = login_with_email_password(email.strip(), password)
+                        user = result.user
+                        role = get_profile_role(user.id, user.email)
+                        st.session_state.auth_user = {
+                            "id": user.id,
+                            "email": user.email,
+                            "role": role,
+                            "is_admin": role == "admin",
+                        }
+                        st.session_state.is_authenticated = True
+                        st.success("Account created. Welcome to the dashboard.")
+                        st.rerun()
+                    except Exception as login_error:
+                        st.success("Account created.")
+                        st.warning(_auth_error_text(login_error))
+                except Exception as e:
+                    st.error(f"Signup failed: {_auth_error_text(e)}")
+
+
+_ensure_auth_state()
+current_user = get_current_user()
+if not st.session_state.is_authenticated or not current_user:
+    _render_login_screen()
+    st.stop()
+
+latest_role = get_profile_role(current_user["id"], current_user.get("email"))
+st.session_state.auth_user["role"] = latest_role
+st.session_state.auth_user["is_admin"] = latest_role == "admin"
+current_user = st.session_state.auth_user
+
+try:
+    db.table("profiles").upsert(
+        {
+            "id": current_user["id"],
+            "email": current_user["email"],
+            "role": current_user.get("role", "user"),
+            "last_seen_at": pd.Timestamp.utcnow().isoformat(),
+        }
+    ).execute()
+except Exception:
+    pass
 
 # ══════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -458,6 +526,24 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="padding:0 8px 12px;">
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
+                        letter-spacing:.1em;text-transform:uppercase;">Signed in as</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:13px;color:#d4ddf0;
+                        margin-top:4px;">{current_user['email']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if st.button("Logout", use_container_width=True):
+        logout_current_user()
+        st.session_state.auth_user = None
+        st.session_state.is_authenticated = False
+        st.rerun()
+
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # Upload section
     st.markdown("""
@@ -534,7 +620,10 @@ with st.sidebar:
 
     if st.button("Load Past Analyses", use_container_width=True):
         try:
-            history = db.table("analyses").select("*").order("created_at", desc=True).limit(8).execute()
+            query = db.table("analyses").select("*").order("created_at", desc=True).limit(8)
+            if not current_user["is_admin"]:
+                query = query.eq("user_id", current_user["id"])
+            history = query.execute()
             if history.data:
                 for record in history.data:
                     date_str = record['created_at'][:10]
@@ -559,6 +648,27 @@ with st.sidebar:
                 st.info("No history yet.")
         except Exception as e:
             st.error(f"Error: {e}")
+
+    if current_user["is_admin"]:
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
+                    letter-spacing:.12em;text-transform:uppercase;padding:0 8px;margin-bottom:8px;">
+            Admin Control
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("View User Activity", use_container_width=True):
+            try:
+                users = db.table("profiles").select("id,email,last_seen_at").order("last_seen_at", desc=True).limit(20).execute()
+                if users.data:
+                    for item in users.data:
+                        email_text = item.get("email", "No email")
+                        last_seen = item.get("last_seen_at", "N/A")
+                        st.caption(f"{email_text} · last seen: {last_seen}")
+                else:
+                    st.info("No user activity records found.")
+            except Exception:
+                st.info("No profiles table yet. Add it to enable admin user directory.")
 
     # WhatsApp CTA
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
@@ -600,8 +710,11 @@ with main:
     </div>
     """, unsafe_allow_html=True)
 
+    template_df = st.session_state.get("template_df")
+    data_available = uploaded is not None or template_df is not None
+
     # ── NO FILE UPLOADED STATE ─────────────────────────────
-    if not uploaded:
+    if not data_available:
         st.markdown("""
         <div style="display:flex;align-items:center;justify-content:center;
                     min-height:60vh;padding:40px;">
@@ -648,22 +761,65 @@ with main:
             </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Create Blank Dataset In-App", use_container_width=False):
+            st.session_state.template_df = pd.DataFrame(
+                {
+                    "month": ["Jan 2026", "Feb 2026", "Mar 2026"],
+                    "revenue": [0, 0, 0],
+                    "costs": [0, 0, 0],
+                }
+            )
+            st.rerun()
 
     # ── DATA LOADED STATE ──────────────────────────────────
     else:
-        # Load and clean data (supports flexible column names/formats)
-        try:
-            df = load_financial_file(uploaded)
-        except Exception as e:
-            st.error(f"Failed to load file: {e}")
-            st.stop()
+        if uploaded is not None:
+            # Load and clean data (supports flexible column names/formats)
+            try:
+                df = load_financial_file(uploaded)
+            except Exception as e:
+                st.error(f"Failed to load file: {e}")
+                st.stop()
+        else:
+            df = template_df.copy()
+            if "profit" not in df.columns:
+                df["profit"] = pd.to_numeric(df["revenue"], errors="coerce").fillna(0) - pd.to_numeric(df["costs"], errors="coerce").fillna(0)
+            if "margin_pct" not in df.columns:
+                denom = pd.to_numeric(df["revenue"], errors="coerce").replace(0, pd.NA)
+                df["margin_pct"] = ((pd.to_numeric(df["profit"], errors="coerce") / denom) * 100).fillna(0).round(1)
+
+        with st.expander("DATA STUDIO · Edit or Build Your Dataset", expanded=False):
+            edited_df = st.data_editor(
+                df[["month", "revenue", "costs", "profit", "margin_pct"]].copy(),
+                num_rows="dynamic",
+                use_container_width=True,
+                key="engine1_data_editor",
+            )
+            edited_df["revenue"] = pd.to_numeric(edited_df["revenue"], errors="coerce").fillna(0)
+            edited_df["costs"] = pd.to_numeric(edited_df["costs"], errors="coerce").fillna(0)
+            edited_df["profit"] = edited_df["revenue"] - edited_df["costs"]
+            denom = edited_df["revenue"].replace(0, pd.NA)
+            edited_df["margin_pct"] = ((edited_df["profit"] / denom) * 100).fillna(0).round(1)
+            df = edited_df
+            st.session_state.template_df = df.copy()
+
+            csv_bytes = df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download Edited CSV",
+                data=csv_bytes,
+                file_name="engine1_edited_financials.csv",
+                mime="text/csv",
+                use_container_width=False,
+            )
 
         # Run engine
         try:
             pnl          = analyse_pnl(df)
             forecast     = forecast_cashflow(df)
-            alerts       = detect_variances(df)
-            score, label = health_score(pnl, alerts)
+            base_alerts  = detect_variances(df)
+            alerts       = _augment_alerts(df, base_alerts)
+            runway_months = _cash_runway_months(df)
+            score, label = _weighted_health_score(pnl, alerts, runway_months)
         except Exception as e:
             st.error(f"Engine error: {e}. Check your file has month, revenue, and costs columns.")
             st.stop()
@@ -679,6 +835,8 @@ with main:
         # Save to Supabase
         try:
             db.table("analyses").insert({
+                "user_id":       current_user["id"],
+                "user_email":    current_user["email"],
                 "total_revenue": float(pnl["total_revenue"]),
                 "total_costs":   float(pnl["total_costs"]),
                 "total_profit":  float(pnl["total_profit"]),
@@ -737,21 +895,23 @@ with main:
 
         # ── KPI METRICS ROW ────────────────────────────────
         st.markdown("<div style='padding:20px 40px 0;'>", unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("Total Revenue",   f"K{pnl['total_revenue']:,.0f}")
         c2.metric("Total Costs",     f"K{pnl['total_costs']:,.0f}")
         c3.metric("Net Profit",      f"K{pnl['total_profit']:,.0f}")
         c4.metric("Avg Margin",      f"{pnl['avg_margin']}%")
         c5.metric("Variance Alerts", len(alerts), "Detected" if alerts else "Clean")
+        c6.metric("Cash Runway", f"{runway_months:.1f} mo", "Estimated")
         st.markdown("</div>", unsafe_allow_html=True)
 
         # ── MAIN TABS ──────────────────────────────────────
         st.markdown("<div style='padding:24px 40px 0;'>", unsafe_allow_html=True)
-        tab1, tab2, tab3, tab4 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "FINANCIAL OVERVIEW",
             "CASH INTELLIGENCE",
             "VARIANCE ANALYSIS",
-            "STRATEGIC BRIEF"
+            "STRATEGIC BRIEF",
+            "DATA STUDIO"
         ])
 
         # ── TAB 1: FINANCIAL OVERVIEW ──────────────────────
@@ -833,6 +993,16 @@ with main:
         # ── TAB 2: CASH INTELLIGENCE ───────────────────────
         with tab2:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+            runway_color = "#10b981" if runway_months >= 6 else "#f59e0b" if runway_months >= 3 else "#ef4444"
+            st.markdown(
+                f"""
+                <div style="background:#090d1e;border:1px solid {runway_color}33;border-radius:12px;padding:14px 18px;margin-bottom:12px;">
+                    <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;letter-spacing:.1em;">CASH RUNWAY ESTIMATE</div>
+                    <div style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:700;color:{runway_color};margin-top:4px;">{runway_months:.1f} months</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             # Forecast chart
             forecast_months = [f"Month +{f['month_ahead']}" for f in forecast]
@@ -906,6 +1076,7 @@ with main:
                 for alert in alerts:
                     direction_color = "#ef4444" if alert['direction'] == "drop" else "#f59e0b"
                     direction_icon  = "▼" if alert['direction'] == "drop" else "▲"
+                    alert_type = alert.get("type", "revenue_variance").replace("_", " ").upper()
                     st.markdown(f"""
                     <div style="background:#090d1e;border:1px solid {direction_color}33;
                                 border-left:3px solid {direction_color};
@@ -915,7 +1086,7 @@ with main:
                             <div>
                                 <div style="font-family:'DM Mono',monospace;font-size:9px;
                                             color:#2d4a70;letter-spacing:.1em;margin-bottom:6px;">
-                                    VARIANCE DETECTED · {alert['month'].upper()}
+                                    {alert_type} · {alert['month'].upper()}
                                 </div>
                                 <div style="font-family:'Outfit',sans-serif;font-size:15px;
                                             font-weight:600;color:#e2eeff;">
@@ -949,6 +1120,14 @@ with main:
         # ── TAB 4: STRATEGIC BRIEF ─────────────────────────
         with tab4:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+            pdf_bytes = _build_pdf_report(pnl, score, label, alerts, runway_months)
+            st.download_button(
+                "Download Executive PDF",
+                data=pdf_bytes,
+                file_name="engine1_executive_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
             st.markdown("""
             <div style="background:#090d1e;border:1px solid rgba(99,179,237,.1);
@@ -1017,6 +1196,20 @@ with main:
 
                     except Exception as e:
                         st.error(f"Analysis failed: {e}. Check your API connection.")
+
+        with tab5:
+            st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+            st.markdown(
+                """
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
+                            letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;">
+                    In-App Data Editing
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.caption("Use the DATA STUDIO expander above the engine run area to edit/create rows and download a clean CSV.")
 
         st.markdown("</div>", unsafe_allow_html=True)
 

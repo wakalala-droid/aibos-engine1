@@ -4,3 +4,5 @@ plotly
 groq
 openpyxl
 supabase
+reportlab
+python-dotenv

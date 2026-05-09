@@ -6,3 +6,4 @@ openpyxl
 supabase
 reportlab
 python-dotenv
+numpy

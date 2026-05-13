@@ -946,7 +946,7 @@ if __name__ == "__main__":
     def export_excel_report(df, pnl, health_score, health_label, alerts,
                         runway_months, forecast_data=None,
                         anomaly_data=None, breakeven_data=None) -> bytes:
-    """Export a formatted Excel workbook."""
+            """Export a formatted Excel workbook."""
     import io
     import pandas as pd
     from openpyxl import Workbook

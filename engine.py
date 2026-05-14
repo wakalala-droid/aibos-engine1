@@ -943,18 +943,15 @@ if __name__ == "__main__":
         print(f"  Excel export failed: {exc}")
 
     
-    def export_excel_report(df, pnl, health_score, health_label, alerts,
+def export_excel_report(df, pnl, health_score, health_label, alerts,
                         runway_months, forecast_data=None,
                         anomaly_data=None, breakeven_data=None) -> bytes:
-            """Export a formatted Excel workbook."""
     import io
     import pandas as pd
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment
 
     wb = Workbook()
 
-    # ── Sheet 1: Summary ──────────────────────────────────
     ws = wb.active
     ws.title = "Summary"
     ws.append(["AI-BOS Intelligence Report"])
@@ -968,21 +965,18 @@ if __name__ == "__main__":
     ws.append(["Best Month",    pnl.get("best_month",  "")])
     ws.append(["Worst Month",   pnl.get("worst_month", "")])
 
-    # ── Sheet 2: P&L Data ─────────────────────────────────
     ws2 = wb.create_sheet("P&L Data")
     cols = [c for c in ["month","revenue","costs","profit","margin_pct"] if c in df.columns]
     ws2.append(cols)
     for row in df[cols].itertuples(index=False):
         ws2.append(list(row))
 
-    # ── Sheet 3: Alerts ───────────────────────────────────
     ws3 = wb.create_sheet("Alerts")
     ws3.append(["Month", "Direction", "Change %", "Type"])
     for a in alerts:
         ws3.append([a.get("month",""), a.get("direction",""),
                     a.get("change_pct", 0), a.get("type","")])
 
-    # ── Sheet 4: Forecast ─────────────────────────────────
     if forecast_data and "forecast" in forecast_data:
         ws4 = wb.create_sheet("Forecast")
         ws4.append(["Month", "Predicted", "Low", "High"])
@@ -990,7 +984,6 @@ if __name__ == "__main__":
             ws4.append([pt.get("month",""), pt.get("predicted",0),
                         pt.get("low",0),  pt.get("high",0)])
 
-    # ── Sheet 5: Breakeven ────────────────────────────────
     if breakeven_data:
         ws5 = wb.create_sheet("Breakeven")
         ws5.append(["Metric", "Value"])

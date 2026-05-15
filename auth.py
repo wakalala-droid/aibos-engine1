@@ -1,5 +1,4 @@
 import os
-import urllib.parse
 import streamlit as st
 from supabase import Client, create_client
 
@@ -47,7 +46,7 @@ def get_profile_role(user_id: str, email: str | None = None) -> str:
 
 
 # ══════════════════════════════════════════════════════════════
-# EMAIL / PASSWORD AUTH  (kept for admin use)
+# EMAIL / PASSWORD AUTH
 # ══════════════════════════════════════════════════════════════
 
 def login_with_email_password(email: str, password: str):
@@ -73,51 +72,18 @@ def get_current_user():
 
 
 # ══════════════════════════════════════════════════════════════
-# GOOGLE OAUTH  —  IMPLICIT FLOW (no PKCE)
-# ══════════════════════════════════════════════════════════════
-#
-# ROOT CAUSE OF THE REDIRECT-LOOP BUG:
-#   Supabase-py v2 defaults to PKCE flow. It stores the code_verifier
-#   in memory. When Google redirects back, Streamlit starts a NEW
-#   Python session — the verifier is gone — exchange_code_for_session()
-#   fails — the error handler shows the login screen again.
-#
-# FIX:
-#   Bypass supabase-py's OAuth helper entirely and build the URL
-#   manually with response_type=token (implicit flow).
-#   Supabase returns #access_token=… in the URL hash instead of
-#   a PKCE code. No verifier is ever needed.
-#   Our JS bridge converts the hash to ?access_token=… so Python
-#   can read it and call set_session() directly.
+# GOOGLE OAUTH — handled entirely by Supabase JS SDK in browser
+# Python only needs to call set_session() with the tokens the
+# JS SDK extracts and passes back via URL query params.
 # ══════════════════════════════════════════════════════════════
 
 def get_google_oauth_url(redirect_to: str | None = None) -> str | None:
-    """
-    Returns a Supabase Google OAuth URL that uses IMPLICIT flow.
-    Avoids PKCE entirely so no code-verifier is ever stored or lost.
-    """
-    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    if not supabase_url:
-        return None
-
-    app_url = redirect_to or os.environ.get("APP_URL", "")
-
-    params: dict[str, str] = {
-        "provider":      "google",
-        "response_type": "token",          # ← implicit flow, no PKCE
-        "scopes":        "email profile",
-    }
-    if app_url:
-        params["redirect_to"] = app_url
-
-    return f"{supabase_url}/auth/v1/authorize?{urllib.parse.urlencode(params)}"
+    """Not used — OAuth is initiated by the JS SDK. Kept for compatibility."""
+    return None
 
 
 def exchange_oauth_code(code: str):
-    """
-    Kept for compatibility. With implicit flow this is never called,
-    but it's here as a safety net if PKCE somehow fires.
-    """
+    """Fallback PKCE exchange — should not be needed with JS SDK flow."""
     client = get_supabase_client()
     try:
         return client.auth.exchange_code_for_session({"auth_code": code})
@@ -126,18 +92,18 @@ def exchange_oauth_code(code: str):
 
 
 # ══════════════════════════════════════════════════════════════
-# USER-FRIENDLY ERROR TRANSLATION
+# ERROR TRANSLATION
 # ══════════════════════════════════════════════════════════════
 
 _ERROR_TABLE = [
-    ("invalid login credentials", "wrong_password",    "Incorrect email or password."),
-    ("email not confirmed",        "unconfirmed",       "Please confirm your email first."),
-    ("user already registered",    "duplicate_email",   "An account with that email already exists."),
-    ("password should be at least","weak_password",     "Password must be at least 6 characters."),
-    ("unable to validate email",   "invalid_email",     "That doesn't look like a valid email address."),
-    ("email rate limit exceeded",  "rate_limit",        "Too many attempts — please wait a few minutes."),
-    ("signup is disabled",         "signups_disabled",  "New sign-ups are temporarily closed."),
-    ("network",                    "network_error",     "Connection problem. Check your internet."),
+    ("invalid login credentials", "wrong_password",   "Incorrect email or password."),
+    ("email not confirmed",        "unconfirmed",      "Please confirm your email first."),
+    ("user already registered",    "duplicate_email",  "An account with that email already exists."),
+    ("password should be at least","weak_password",    "Password must be at least 6 characters."),
+    ("unable to validate email",   "invalid_email",    "That doesn't look like a valid email address."),
+    ("email rate limit exceeded",  "rate_limit",       "Too many attempts — please wait a few minutes."),
+    ("signup is disabled",         "signups_disabled", "New sign-ups are temporarily closed."),
+    ("network",                    "network_error",    "Connection problem. Check your internet."),
 ]
 
 

@@ -14,7 +14,6 @@ from engine import (
     forecast_revenue,
     detect_anomalies,
     calculate_breakeven,
-    # ── Week 3 ──────────────────────────
     export_excel_report,
     save_chat_message,
     load_chat_history,
@@ -199,7 +198,7 @@ CHART_THEME = dict(
 # HELPERS
 # ══════════════════════════════════════════════════════════════
 def _augment_alerts(df, base_alerts):
-    alerts     = list(base_alerts)
+    alerts = list(base_alerts)
     if len(df) < 2:
         return alerts
     cost_change   = df["costs"].pct_change().fillna(0) * 100
@@ -216,8 +215,8 @@ def _augment_alerts(df, base_alerts):
 
 
 def _cash_runway_months(df):
-    burn             = (df["costs"] - df["revenue"]).clip(lower=0)
-    avg_monthly_burn = float(burn.mean()) if len(burn) else 0.0
+    burn              = (df["costs"] - df["revenue"]).clip(lower=0)
+    avg_monthly_burn  = float(burn.mean()) if len(burn) else 0.0
     latest_cash_proxy = float(df["profit"].tail(3).sum()) if "profit" in df.columns else 0.0
     if avg_monthly_burn <= 0:
         return 99.0
@@ -225,10 +224,10 @@ def _cash_runway_months(df):
 
 
 def _weighted_health_score(pnl, alerts, runway_months):
-    margin_score      = max(0.0, min(100.0, float(pnl.get("avg_margin", 0)) * 3.2))
-    alerts_penalty    = min(45.0, len(alerts) * 4.0)
-    runway_score      = max(0.0, min(100.0, runway_months * 10.0))
-    profit_score      = 100.0 if float(pnl.get("total_profit", 0)) > 0 else 35.0
+    margin_score   = max(0.0, min(100.0, float(pnl.get("avg_margin", 0)) * 3.2))
+    alerts_penalty = min(45.0, len(alerts) * 4.0)
+    runway_score   = max(0.0, min(100.0, runway_months * 10.0))
+    profit_score   = 100.0 if float(pnl.get("total_profit", 0)) > 0 else 35.0
     weighted = (
         (margin_score * 0.35) + (runway_score * 0.25)
         + (profit_score * 0.20) + ((100.0 - alerts_penalty) * 0.20)
@@ -270,21 +269,14 @@ def _build_pdf_report(pnl, score, label, alerts, runway_months):
 
 
 # ══════════════════════════════════════════════════════════════
-# AUTH STATE
-# ── FIXED: handle_oauth_callback() now uses implicit OAuth flow
-#    (response_type=token) so no PKCE verifier is ever stored or
-#    lost across Streamlit's process restarts on redirect.
-#    On success → _set_authenticated() → show_login_page=False
-#    → st.rerun() → dashboard renders. No more loop back to login.
+# AUTH — Supabase JS SDK handles OAuth in browser,
+# passes tokens back via URL params, Python calls set_session()
 # ══════════════════════════════════════════════════════════════
 try:
     handle_oauth_callback()
 except Exception:
     pass
 
-# Safety net: if login_error was set but show_login_page was not
-# flipped (e.g. exception swallowed before st.rerun()), catch it
-# here so the error always surfaces on the login screen.
 if (
     st.session_state.get("login_error")
     and not st.session_state.get("is_authenticated", False)
@@ -297,31 +289,27 @@ if st.session_state.get("show_login_page", False):
     st.stop()
 
 authenticated = st.session_state.get("is_authenticated", False)
-current_user = st.session_state.get("auth_user")
-guest_mode = False
+current_user  = st.session_state.get("auth_user")
+guest_mode    = False
 if current_user is None:
-    guest_mode = True
+    guest_mode   = True
     current_user = {
-        "id": "guest",
-        "email": "Guest",
-        "role": "guest",
-        "is_admin": False,
+        "id": "guest", "email": "Guest",
+        "role": "guest", "is_admin": False,
     }
 else:
-    # Refresh role on every load in case it changed in Supabase
     try:
         latest_role = get_profile_role(current_user.get("id", ""), current_user.get("email"))
         if latest_role:
-            current_user["role"] = latest_role
+            current_user["role"]     = latest_role
             current_user["is_admin"] = latest_role == "admin"
     except Exception:
-        current_user["role"] = current_user.get("role", "user")
+        current_user["role"]     = current_user.get("role", "user")
         current_user["is_admin"] = current_user.get("is_admin", False)
     st.session_state.auth_user = current_user
 
 # ══════════════════════════════════════════════════════════════
-# WEEK 3 — LOAD PERSISTENT CHAT ON STARTUP
-# Load from Supabase once per session so the AI remembers past context
+# LOAD PERSISTENT CHAT ON STARTUP
 # ══════════════════════════════════════════════════════════════
 try:
     if "chat_loaded" not in st.session_state or not st.session_state.get("chat_loaded", False):
@@ -335,11 +323,9 @@ try:
             st.session_state.chat = []
         st.session_state.chat_loaded = True
 
-    if "chat" not in st.session_state:
-        st.session_state.chat = []
-
-    if "pnl_context"  not in st.session_state: st.session_state.pnl_context  = None
-    if "template_df"  not in st.session_state: st.session_state.template_df  = None
+    if "chat"        not in st.session_state: st.session_state.chat        = []
+    if "pnl_context" not in st.session_state: st.session_state.pnl_context = None
+    if "template_df" not in st.session_state: st.session_state.template_df = None
 except Exception:
     st.session_state.chat = []
     st.session_state.chat_loaded = True
@@ -375,7 +361,7 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         if st.button("Sign in with Google", use_container_width=True, key="sidebar_login"):
             st.session_state.show_login_page = True
-            st.session_state.login_screen = "login"
+            st.session_state.login_screen    = "login"
             st.rerun()
     else:
         st.markdown(f"""
@@ -407,9 +393,10 @@ with st.sidebar:
     if uploaded is not None and guest_mode:
         st.warning("Sign in to upload financial data and save reports.")
         if st.button("Sign in to upload", use_container_width=True, key="upload_signin"):
-                st.session_state.show_login_page = True
-                st.session_state.login_screen = "login"
-                st.rerun()
+            st.session_state.show_login_page = True
+            st.session_state.login_screen    = "login"
+            st.rerun()
+
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
@@ -437,10 +424,9 @@ with st.sidebar:
             except Exception:
                 pass
 
-        context = st.session_state.pnl_context or "No financial data loaded yet."
+        context      = st.session_state.pnl_context or "No financial data loaded yet."
         chat_history = st.session_state.get("chat", [])
-        messages = build_chat_context_from_history(chat_history[:-1])
-        # Inject current financial context into the last user message
+        messages     = build_chat_context_from_history(chat_history[:-1])
         messages.append({
             "role":    "user",
             "content": f"[Current data: {context}]\n\n{question}",
@@ -517,7 +503,7 @@ with st.sidebar:
                         st.info("No history yet.")
             except Exception as e:
                 st.error(f"Unable to load analysis history: {e}")
-                st.exception(e)
+
     st.markdown("""
     <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
                 letter-spacing:.12em;text-transform:uppercase;padding:0 8px;margin-bottom:10px;">
@@ -533,7 +519,7 @@ with st.sidebar:
                 Sign in to manage email reports, subscriptions, and saved dashboards.
             </div>""", unsafe_allow_html=True)
     else:
-        _db = _get_db()
+        _db          = _get_db()
         existing_sub = get_subscription(_db, current_user["id"]) if _db else None
         sub_email    = existing_sub["email"] if existing_sub else current_user["email"]
         sub_active   = existing_sub["active"] if existing_sub else False
@@ -566,7 +552,6 @@ with st.sidebar:
                     else:
                         st.error("Subscription unavailable.")
 
-            # Send test report now
             if st.button("📤 Send Test Report Now", use_container_width=True, key="btn_test_email"):
                 _test_df = st.session_state.get("_last_df")
                 if _test_df is None:
@@ -574,13 +559,13 @@ with st.sidebar:
                 else:
                     with st.spinner("Building and sending…"):
                         try:
-                            _t_pnl   = analyse_pnl(_test_df)
-                            _t_fc    = forecast_cashflow(_test_df)
+                            _t_pnl    = analyse_pnl(_test_df)
+                            _t_fc     = forecast_cashflow(_test_df)
                             _t_alerts = _augment_alerts(_test_df, detect_variances(_test_df))
                             _t_runway = _cash_runway_months(_test_df)
                             _t_score, _t_label = _weighted_health_score(_t_pnl, _t_alerts, _t_runway)
-                            _t_pdf   = _build_pdf_report(_t_pnl, _t_score, _t_label, _t_alerts, _t_runway)
-                            ok, msg  = send_report_email(report_email.strip(), _t_pdf)
+                            _t_pdf    = _build_pdf_report(_t_pnl, _t_score, _t_label, _t_alerts, _t_runway)
+                            ok, msg   = send_report_email(report_email.strip(), _t_pdf)
                             if ok:
                                 st.success(msg)
                             else:
@@ -669,7 +654,7 @@ with st.container():
         with col_signin:
             if st.button("Sign In with Google", use_container_width=True, key="guest_signin"):
                 st.session_state.show_login_page = True
-                st.session_state.login_screen = "login"
+                st.session_state.login_screen    = "login"
                 st.rerun()
 
     template_df    = st.session_state.get("template_df")
@@ -731,7 +716,6 @@ with st.container():
                 denom = pd.to_numeric(df["revenue"], errors="coerce").replace(0, pd.NA)
                 df["margin_pct"] = ((pd.to_numeric(df["profit"], errors="coerce") / denom) * 100).fillna(0).round(1)
 
-        # Stash for test email button
         st.session_state["_last_df"] = df.copy()
 
         with st.expander("DATA STUDIO · Edit or Build Your Dataset", expanded=False):
@@ -745,10 +729,9 @@ with st.container():
             denom                   = edited_df["revenue"].replace(0, pd.NA)
             edited_df["margin_pct"] = ((edited_df["profit"] / denom) * 100).fillna(0).round(1)
             df = edited_df
-            st.session_state.template_df  = df.copy()
-            st.session_state["_last_df"]  = df.copy()
+            st.session_state.template_df = df.copy()
+            st.session_state["_last_df"] = df.copy()
 
-            # ── WEEK 3 FEATURE 1: FORMATTED EXCEL DOWNLOAD ─
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             st.markdown("""
             <div style="font-family:'DM Mono',monospace;font-size:9px;color:#2d4a70;
@@ -768,14 +751,14 @@ with st.container():
                 if st.button("⬇ Download Excel Report", use_container_width=True, key="excel_dl_btn"):
                     with st.spinner("Building formatted workbook…"):
                         try:
-                            _pnl_ex  = analyse_pnl(df)
-                            _al_ex   = _augment_alerts(df, detect_variances(df))
-                            _rn_ex   = _cash_runway_months(df)
+                            _pnl_ex = analyse_pnl(df)
+                            _al_ex  = _augment_alerts(df, detect_variances(df))
+                            _rn_ex  = _cash_runway_months(df)
                             _sc_ex, _lb_ex = _weighted_health_score(_pnl_ex, _al_ex, _rn_ex)
-                            _fc_ex   = forecast_revenue(df)
-                            _an_ex   = detect_anomalies(df)
-                            _be_ex   = calculate_breakeven(df)
-                            _xlsx    = export_excel_report(
+                            _fc_ex  = forecast_revenue(df)
+                            _an_ex  = detect_anomalies(df)
+                            _be_ex  = calculate_breakeven(df)
+                            _xlsx   = export_excel_report(
                                 df, _pnl_ex, _sc_ex, _lb_ex, _al_ex, _rn_ex,
                                 forecast_data=_fc_ex,
                                 anomaly_data=_an_ex,
@@ -885,7 +868,6 @@ with st.container():
             "ANOMALY INTEL",      "BREAKEVEN",
         ])
 
-        # ── TAB 1: FINANCIAL OVERVIEW ──────────────────────
         with tab1:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             col_left, col_right = st.columns([3, 2])
@@ -929,7 +911,6 @@ with st.container():
                     **CHART_THEME, height=200)
                 st.plotly_chart(fig_profit, use_container_width=True)
 
-        # ── TAB 2: CASH INTELLIGENCE ───────────────────────
         with tab2:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             runway_color = "#10b981" if runway_months >= 6 else "#f59e0b" if runway_months >= 3 else "#ef4444"
@@ -966,7 +947,6 @@ with st.container():
                                 color:{status_color};font-weight:500;">{item['status']}</div>
                 </div>""", unsafe_allow_html=True)
 
-        # ── TAB 3: VARIANCE ANALYSIS ───────────────────────
         with tab3:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             if not alerts:
@@ -1012,10 +992,8 @@ with st.container():
                     **CHART_THEME, height=220)
                 st.plotly_chart(fig_wf, use_container_width=True)
 
-        # ── TAB 4: STRATEGIC BRIEF ─────────────────────────
         with tab4:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-
             dl1, dl2 = st.columns(2)
             with dl1:
                 pdf_bytes = _build_pdf_report(pnl, score, label, alerts, runway_months)
@@ -1095,7 +1073,6 @@ with st.container():
                     except Exception as e:
                         st.error(f"Analysis failed: {e}")
 
-        # ── TAB 5: DATA STUDIO ─────────────────────────────
         with tab5:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             st.markdown("""
@@ -1112,7 +1089,6 @@ with st.container():
             )
             st.caption("Use the DATA STUDIO expander above to edit rows and export.")
 
-        # ── TAB 6: REVENUE FORECAST ────────────────────────
         with tab6:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             with st.spinner("Running linear regression forecast…"):
@@ -1194,7 +1170,6 @@ with st.container():
                             K{pt['low']:,} – K{pt['high']:,}</div>
                     </div>""", unsafe_allow_html=True)
 
-        # ── TAB 7: ANOMALY INTEL ───────────────────────────
         with tab7:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             z_thresh = st.slider("Detection sensitivity (z-score threshold)",
@@ -1266,7 +1241,6 @@ with st.container():
                             {a['root_cause']}</div>
                     </div>""", unsafe_allow_html=True)
 
-        # ── TAB 8: BREAKEVEN ───────────────────────────────
         with tab8:
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             fixed_pct = st.slider("Fixed costs as % of total costs",

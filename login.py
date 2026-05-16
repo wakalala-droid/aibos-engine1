@@ -1,13 +1,8 @@
 """
 AI-BOS · Login Screen (login.py)
 ═══════════════════════════════════════════════════════
+Clean original UI restored.
 Google OAuth — PKCE verifier stored in Supabase DB.
-
-This approach is guaranteed to work because:
-  - The verifier lives in the database, not memory
-  - Process restarts don't affect it
-  - The state token travels through the OAuth URL
-  - No iframes, no sandboxing, no implicit flow needed
 ═══════════════════════════════════════════════════════
 """
 
@@ -52,11 +47,11 @@ def render_login_screen():
 
 
 # ══════════════════════════════════════════════════════════════
-# CSS
+# CSS — original clean design restored
 # ══════════════════════════════════════════════════════════════
 _LOGIN_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 .aibos-login-wrap {
     display:flex; align-items:center; justify-content:center;
@@ -64,53 +59,58 @@ _LOGIN_CSS = """
 }
 .aibos-login-card {
     background:#090d1e;
-    border:1px solid rgba(99,179,237,.18);
+    border:1px solid rgba(99,179,237,.15);
     border-radius:20px;
-    padding:52px 44px 44px;
+    padding:44px 40px 36px;
     width:100%; max-width:420px;
-    box-shadow:0 32px 80px rgba(0,0,0,.7);
+    box-shadow:0 24px 64px rgba(0,0,0,.5);
 }
 .aibos-logo {
     font-family:'Outfit',sans-serif;
-    font-size:34px; font-weight:800;
+    font-size:32px; font-weight:800;
     background:linear-gradient(90deg,#60a5fa,#06b6d4);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    margin-bottom:6px; letter-spacing:-.5px;
+    margin-bottom:4px; letter-spacing:-.5px;
 }
 .aibos-tagline {
     font-family:'DM Mono',monospace;
     font-size:9px; color:#2d4a70;
-    letter-spacing:.16em; text-transform:uppercase;
-    margin-bottom:40px;
+    letter-spacing:.14em; text-transform:uppercase;
+    margin-bottom:32px;
 }
 .aibos-google-btn {
-    display:flex; align-items:center; justify-content:center; gap:12px;
-    background:#ffffff; color:#1f2937; text-decoration:none;
-    border-radius:12px; padding:15px 20px; width:100%;
-    font-family:'Outfit',sans-serif; font-size:15px; font-weight:600;
-    border:none; cursor:pointer;
-    transition:box-shadow .2s, transform .15s;
-    box-shadow:0 2px 8px rgba(0,0,0,.18);
-    margin-bottom:20px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:#1f2937; text-decoration:none;
+    border-radius:10px; padding:11px 20px; width:100%;
+    font-family:'Outfit',sans-serif; font-size:14px; font-weight:600;
+    border:none; cursor:pointer; transition:box-shadow .2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.12);
 }
 .aibos-google-btn:hover {
-    box-shadow:0 8px 24px rgba(0,0,0,.26);
-    transform:translateY(-1px);
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
     text-decoration:none; color:#1f2937;
 }
 .aibos-error {
     background:rgba(239,68,68,.08);
-    border:1px solid rgba(239,68,68,.3);
+    border:1px solid rgba(239,68,68,.25);
     border-left:3px solid #ef4444;
-    border-radius:8px; padding:12px 16px; margin-bottom:16px;
+    border-radius:8px; padding:10px 14px; margin-bottom:14px;
     font-family:'Outfit',sans-serif; font-size:13px; color:#fca5a5;
+    line-height:1.5;
+}
+.aibos-success {
+    background:rgba(16,185,129,.08);
+    border:1px solid rgba(16,185,129,.25);
+    border-left:3px solid #10b981;
+    border-radius:8px; padding:10px 14px; margin-bottom:14px;
+    font-family:'Outfit',sans-serif; font-size:13px; color:#6ee7b7;
     line-height:1.5;
 }
 .aibos-info {
     background:rgba(59,130,246,.08);
     border:1px solid rgba(59,130,246,.25);
     border-left:3px solid #3b82f6;
-    border-radius:8px; padding:12px 16px; margin-bottom:16px;
+    border-radius:8px; padding:10px 14px; margin-bottom:14px;
     font-family:'Outfit',sans-serif; font-size:13px; color:#93c5fd;
     line-height:1.5;
 }
@@ -139,6 +139,7 @@ def _init_login_state():
     defaults = {
         "login_screen":     "login",
         "login_error":      None,
+        "login_success":    None,
         "pending_email":    "",
         "auth_user":        None,
         "is_authenticated": False,
@@ -206,18 +207,12 @@ def _qp(name: str) -> str:
 # ══════════════════════════════════════════════════════════════
 
 def _handle_oauth_callback():
-    """
-    Reads ?code= and ?oauth_state= from the URL.
-    Fetches the PKCE verifier from Supabase using oauth_state.
-    Exchanges the code for a session.
-    """
     code        = _qp("code")
     oauth_state = _qp("oauth_state")
 
     if not code:
         return
 
-    # Clear URL params immediately
     st.query_params.clear()
 
     with st.spinner("Completing sign-in…"):
@@ -232,7 +227,6 @@ def _handle_oauth_callback():
         st.rerun()
         return
 
-    # Failed
     st.session_state.login_error     = "Sign-in could not be completed. Please try again."
     st.session_state.show_login_page = True
     st.rerun()
@@ -260,6 +254,10 @@ def _logo():
 def _show_error(msg: str):
     if msg:
         st.markdown(f'<div class="aibos-error">⚠ {msg}</div>', unsafe_allow_html=True)
+
+def _show_success(msg: str):
+    if msg:
+        st.markdown(f'<div class="aibos-success">✓ {msg}</div>', unsafe_allow_html=True)
 
 def _show_info(msg: str):
     if msg:
@@ -289,7 +287,7 @@ def _screen_check_email():
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("← Back to sign in", use_container_width=True):
+    if st.button("Back to sign in", use_container_width=True):
         st.session_state.login_screen = "login"
         st.session_state.login_error  = None
         st.rerun()
@@ -313,7 +311,7 @@ def _screen_reset_sent():
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("← Back to sign in", use_container_width=True):
+    if st.button("Back to sign in", use_container_width=True):
         st.session_state.login_screen = "login"
         st.session_state.login_error  = None
         st.rerun()
@@ -321,7 +319,7 @@ def _screen_reset_sent():
 
 
 # ══════════════════════════════════════════════════════════════
-# SCREEN: MAIN LOGIN
+# SCREEN: MAIN LOGIN — original clean design
 # ══════════════════════════════════════════════════════════════
 
 def _screen_login():
@@ -332,32 +330,42 @@ def _screen_login():
         _show_error(st.session_state.login_error)
         st.session_state.login_error = None
 
+    if st.session_state.get("login_success"):
+        _show_success(st.session_state.login_success)
+        st.session_state.login_success = None
+
     app_url   = os.environ.get("APP_URL", "")
     oauth_url = get_google_oauth_url(redirect_to=app_url or None)
 
     if oauth_url:
         st.markdown(f"""
         <a href="{oauth_url}" class="aibos-google-btn" target="_self">
-            <svg width="20" height="20" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.717v2.258h2.908C16.658 14.017 17.64 11.71 17.64 9.2z"/>
-                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-                <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4"
+                    d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209
+                    1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567
+                    2.684-3.874 2.684-6.615z"/>
+                <path fill="#34A853"
+                    d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344
+                    0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                <path fill="#FBBC05"
+                    d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996
+                    8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+                <path fill="#EA4335"
+                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891
+                    11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672
+                    4.163 6.656 3.58 9 3.58z"/>
             </svg>
             Continue with Google
         </a>
-        <div style="text-align:center;font-family:'DM Mono',monospace;font-size:10px;
-                    color:#2d4a70;line-height:1.9;margin-top:4px;">
-            You'll be taken to Google to sign in.<br>
-            Afterwards you'll land on your dashboard.
-        </div>
         """, unsafe_allow_html=True)
     else:
-        _show_info("Google login is not configured. Set SUPABASE_URL, SUPABASE_KEY and APP_URL in Streamlit secrets.")
+        _show_info("Google login is not configured. Set SUPABASE_URL, SUPABASE_KEY and APP_URL.")
 
+    # Footer
     st.markdown("""
-    <div style="margin-top:40px;text-align:center;
-                font-family:'DM Mono',monospace;font-size:9px;color:#1a2e4a;">
+    <div style="margin-top:24px;text-align:center;
+                font-family:'DM Mono',monospace;font-size:9px;color:#1e3050;">
         AI-BOS · Financial Intelligence Platform
     </div>""", unsafe_allow_html=True)
 

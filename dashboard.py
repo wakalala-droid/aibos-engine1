@@ -269,8 +269,8 @@ def _build_pdf_report(pnl, score, label, alerts, runway_months):
 
 
 # ══════════════════════════════════════════════════════════════
-# AUTH — Supabase JS SDK handles OAuth in browser,
-# passes tokens back via URL params, Python calls set_session()
+# AUTH — PKCE verifier stored in Supabase DB
+# Survives process restarts, server restarts, everything.
 # ══════════════════════════════════════════════════════════════
 try:
     handle_oauth_callback()
@@ -372,7 +372,6 @@ with st.sidebar:
                         margin-top:4px;">{current_user['email']}</div>
         </div>
         """, unsafe_allow_html=True)
-
         if st.button("Logout", use_container_width=True):
             logout_current_user()
             st.session_state.auth_user        = None
@@ -760,9 +759,7 @@ with st.container():
                             _be_ex  = calculate_breakeven(df)
                             _xlsx   = export_excel_report(
                                 df, _pnl_ex, _sc_ex, _lb_ex, _al_ex, _rn_ex,
-                                forecast_data=_fc_ex,
-                                anomaly_data=_an_ex,
-                                breakeven_data=_be_ex,
+                                forecast_data=_fc_ex, anomaly_data=_an_ex, breakeven_data=_be_ex,
                             )
                             st.session_state["_xlsx_bytes"] = _xlsx
                             st.toast("Excel ready — click below to download ✓", icon="✓")
@@ -1023,7 +1020,6 @@ with st.container():
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True, key="excel_save_tab4",
                     )
-
             st.markdown("""
             <div style="background:#090d1e;border:1px solid rgba(99,179,237,.1);
                         border-radius:14px;padding:24px 28px;margin:16px 0;">
@@ -1033,7 +1029,6 @@ with st.container():
                 <div style="font-family:'Outfit',sans-serif;font-size:14px;color:#6b87b0;line-height:1.7;">
                     Calibrated recommendations from your data — not generic advice.</div>
             </div>""", unsafe_allow_html=True)
-
             if st.button("⚡ Generate Executive Intelligence Brief", use_container_width=True):
                 with st.spinner("Running strategic analysis…"):
                     try:
@@ -1093,7 +1088,6 @@ with st.container():
             st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             with st.spinner("Running linear regression forecast…"):
                 fc = forecast_revenue(df)
-
             if "error" in fc:
                 st.warning(fc["error"])
             else:
@@ -1124,14 +1118,12 @@ with st.container():
                                     color:#e2eeff;">{fc['confidence']}/100</div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-
                 hist_months = [str(m) for m in df["month"].tolist()]
                 hist_rev    = df["revenue"].tolist()
                 fc_months   = [p["month"] for p in fc["forecast"]]
                 predicted   = [p["predicted"] for p in fc["forecast"]]
                 low         = [p["low"]  for p in fc["forecast"]]
                 high        = [p["high"] for p in fc["forecast"]]
-
                 fig_fc = go.Figure()
                 fig_fc.add_trace(go.Scatter(x=hist_months, y=hist_rev, name="Historical",
                     mode="lines+markers", line=dict(color="#3b82f6", width=2), marker=dict(size=5)))
@@ -1176,7 +1168,6 @@ with st.container():
                                  min_value=1.5, max_value=3.5, value=2.0, step=0.5)
             with st.spinner("Running statistical anomaly scan…"):
                 anomalies = detect_anomalies(df, z_threshold=z_thresh)
-
             if not anomalies:
                 st.markdown("""
                 <div style="background:#090d1e;border:1px solid rgba(16,185,129,.2);
@@ -1213,7 +1204,6 @@ with st.container():
                         <div style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:700;color:#60a5fa;">{medium_c}</div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-
                 sev_colors = {"critical":"#ef4444","high":"#f59e0b","medium":"#60a5fa","low":"#10b981"}
                 for a in anomalies:
                     color = sev_colors.get(a["severity"], "#60a5fa")
@@ -1249,7 +1239,6 @@ with st.container():
             above_be  = be["current_avg_revenue"] >= be["breakeven_revenue"]
             be_color  = "#10b981" if above_be else "#ef4444"
             be_status = "ABOVE BREAKEVEN" if above_be else "BELOW BREAKEVEN"
-
             st.markdown(f"""
             <div style="background:#090d1e;border:1px solid {be_color}33;
                         border-left:3px solid {be_color};border-radius:14px;
@@ -1276,7 +1265,6 @@ with st.container():
                         {be['contribution_margin_ratio']}%</div>
                 </div>
             </div>""", unsafe_allow_html=True)
-
             col_l, col_r = st.columns([3, 2])
             with col_l:
                 fig_be = go.Figure()
@@ -1313,7 +1301,6 @@ with st.container():
                         <div style="font-family:'DM Mono',monospace;font-size:10px;color:{s_color};">
                             {s['status'].upper()}</div>
                     </div>""", unsafe_allow_html=True)
-
             st.markdown(f"""
             <div style="background:#090d1e;border:1px solid rgba(6,182,212,.15);
                         border-left:3px solid #06b6d4;border-radius:12px;
